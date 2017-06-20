@@ -183,6 +183,12 @@ impl Repo {
                 dark_cyan_ln!("{}", line);
             }
         }
+
+        let mut branches = self.git_branch_verbose_output(&chosen_alias);
+        if branches.is_empty() {
+            branches = self.git_branch_verbose_output(&chosen_alias.to_lowercase());
+        }
+        prnt_ln!("\n{}", branches);
     }
 
     /// Query GitHub's API and return the contents of the response.  Panics on failure.
@@ -325,5 +331,21 @@ impl Repo {
         } else {
             chosen_owner.0.clone()
         }
+    }
+
+    /// Runs `git branch --list <Alias>/* -vr --sort=-committerdate` and returns the output.
+    fn git_branch_verbose_output(&self, alias: &str) -> String {
+        let alias_arg = format!("{}/*", alias);
+        let output = unwrap!(Command::new(&self.git)
+                                 .args(&["branch",
+                                         "--list",
+                                         &alias_arg,
+                                         "-vr",
+                                         "--sort=-committerdate"])
+                                 .output());
+        assert!(output.status.success(),
+                "Failed to run 'git branch --list {} -vr --sort=-committerdate'",
+                alias_arg);
+        String::from_utf8_lossy(&output.stdout).to_string()
     }
 }
