@@ -1,5 +1,4 @@
-use super::input_getter::{get_string, get_uint};
-use super::known_users::get_users;
+use super::input_getter::{get_bool, get_string, get_uint};
 use find_git;
 use reqwest;
 use serde_json::{self, Value};
@@ -116,8 +115,8 @@ impl Repo {
         }
     }
 
-    /// Ask the user to choose the name for the new remote.
-    pub fn choose_local_remote_alias(&mut self) {
+    /// Ask the user to choose the name for the new remote.  If the function returns `true` the
+    pub fn choose_local_remote_alias(&mut self) -> bool {
         let default = self.suggest_alias();
         loop {
             yellow!("Choose name to assign to remote [{}]: ", default);
@@ -128,11 +127,49 @@ impl Repo {
                 Ok(value) => {
                     if value.is_empty() {
                         self.chosen_remote_alias = RemoteAlias(default);
-                        return;
+                        return false;
                     } else {
                         self.chosen_remote_alias = RemoteAlias(value);
-                        return;
+                        return true;
                     }
+                }
+            }
+        }
+    }
+
+    /// Ask the user whether to add the alias to the global git-config and if so, then try to add
+    /// it.
+    pub fn offer_to_set_alias(&self) {
+        let fork_name = &(self.available_forks[self.chosen_fork_index].0).0;
+        let alias = &self.chosen_remote_alias.0;
+        loop {
+            yellow!("Do you want to set this alias '{}' -> '{}' in your global git-config? [Y/n]: ",
+                    fork_name,
+                    alias);
+            match get_bool(&mut self.stdin.lock(), Some(true)) {
+                Err(error) => {
+                    red_ln!("{}", error);
+                }
+                Ok(false) => return,
+                Ok(true) => {
+                    let git_config_arg = format!("add-remote.{}", fork_name);
+                    let output = unwrap!(Command::new(&self.git)
+                                             .args(&["config",
+                                                     "--global",
+                                                     "--replace-all",
+                                                     &git_config_arg,
+                                                     alias])
+                                             .output());
+                    if output.status.success() {
+                        green_ln!("Alias '{}' -> '{}' successfully set in your global git-config",
+                                  fork_name,
+                                  alias);
+                    } else {
+                        red_ln!("Failed to run 'git config --global --replace-all {} {}'",
+                                git_config_arg,
+                                alias);
+                    }
+                    return;
                 }
             }
         }
@@ -184,7 +221,7 @@ impl Repo {
             }
         }
 
-        let mut branches = self.git_branch_verbose_output(&chosen_alias);
+        let mut branches = self.git_branch_verbose_output(chosen_alias);
         if branches.is_empty() {
             branches = self.git_branch_verbose_output(&chosen_alias.to_lowercase());
         }
@@ -326,8 +363,15 @@ impl Repo {
         if *chosen_owner == self.main_fork_owner {
             return "upstream".to_string();
         }
-        if let Some(alias) = get_users().get(&chosen_owner.0) {
-            alias.clone()
+
+        let alias_arg = format!("add-remote.{}", chosen_owner.0);
+        let output = unwrap!(Command::new(&self.git)
+                                 .args(&["config", &alias_arg])
+                                 .output());
+        if output.status.success() {
+            String::from_utf8_lossy(&output.stdout)
+                .trim()
+                .to_string()
         } else {
             chosen_owner.0.clone()
         }

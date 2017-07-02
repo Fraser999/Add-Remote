@@ -4,7 +4,7 @@ description = "An interactive CLI tool to add a remote fork to a local Git repos
 license = "GPL-3.0"
 name = "add-remote"
 readme = "README.md"
-version = "0.7.0"
+version = "0.8.0"
 
 [dependencies]
 colour = "0.2"

@@ -17,8 +17,6 @@ extern crate unwrap;
 
 /// Reads and validates input from a stream.
 mod input_getter;
-/// Provides a mapping of known GitHub usernames to preferred local aliases.
-mod known_users;
 /// Main struct which holds the details for the current Git repository.
 mod repo;
 
@@ -41,6 +39,8 @@ fn main() {
     }
     repo.show_available_forks();
     repo.choose_fork();
-    repo.choose_local_remote_alias();
+    if repo.choose_local_remote_alias() {
+        repo.offer_to_set_alias();
+    }
     repo.set_remote();
 }

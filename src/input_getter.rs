@@ -14,6 +14,20 @@ pub fn get_string<T: BufRead>(reader: &mut T) -> Result<String, String> {
     }
 }
 
+/// Reads a line from `reader`, and strips the trailing whitespace.  It returns true if the line is
+/// `Y` or `y`; false if the line is `N` or `n`; the unwrapped `default` value if the line is empty,
+/// or else an error.
+pub fn get_bool<T: BufRead>(reader: &mut T, default: Option<bool>) -> Result<bool, String> {
+    let input = get_string(reader)?;
+    let error = "Enter 'y' or 'n' only.".to_string();
+    match &*input {
+        "Y" | "y" => Ok(true),
+        "N" | "n" => Ok(false),
+        "" => default.ok_or(error),
+        _ => Err(error),
+    }
+}
+
 /// Reads a line from from `reader` and strips trailing whitespace.  It returns the value entered if
 pub fn get_uint<T: BufRead>(reader: &mut T, default: Option<u64>) -> Result<u64, String> {
     let input = get_string(reader)?;
@@ -34,11 +48,37 @@ mod tests {
 
     #[test]
     fn get_string() {
-        let mut cursor = make_cursor("");
-        assert_eq!(unwrap!(super::get_string(&mut cursor)), "");
-        cursor = make_cursor("AbCd");
+        let mut cursor = make_cursor("AbCd");
         assert_eq!(unwrap!(super::get_string(&mut cursor)), "AbCd");
-        assert_eq!(unwrap!(super::get_string(&mut cursor)), "");
+    }
+
+    #[test]
+    fn get_bool() {
+        // Cases where `get_bool()` returns Ok(true)
+        let mut cursor = make_cursor("Y");
+        assert!(unwrap!(super::get_bool(&mut cursor, None)));
+        cursor = make_cursor("Y");
+        assert!(unwrap!(super::get_bool(&mut cursor, Some(false))));
+        cursor = make_cursor("y");
+        assert!(unwrap!(super::get_bool(&mut cursor, None)));
+        cursor = make_cursor("y");
+        assert!(unwrap!(super::get_bool(&mut cursor, Some(false))));
+
+        // Cases where `get_bool()` returns Ok(false)
+        cursor = make_cursor("N");
+        assert!(!unwrap!(super::get_bool(&mut cursor, None)));
+        cursor = make_cursor("N");
+        assert!(!unwrap!(super::get_bool(&mut cursor, Some(true))));
+        cursor = make_cursor("n");
+        assert!(!unwrap!(super::get_bool(&mut cursor, None)));
+        cursor = make_cursor("n");
+        assert!(!unwrap!(super::get_bool(&mut cursor, Some(true))));
+
+        // Cases where `get_bool()` returns Err
+        cursor = make_cursor("yy");
+        assert!(super::get_bool(&mut cursor, None).is_err());
+        cursor = make_cursor("nn");
+        assert!(super::get_bool(&mut cursor, Some(true)).is_err());
     }
 
     #[test]
@@ -47,16 +87,12 @@ mod tests {
         assert_eq!(unwrap!(super::get_uint(&mut cursor, None)), 0);
         cursor = make_cursor("999999");
         assert_eq!(unwrap!(super::get_uint(&mut cursor, None)), 999999);
-        cursor = make_cursor("");
-        assert_eq!(unwrap!(super::get_uint(&mut cursor, Some(1234))), 1234);
         cursor = make_cursor("999999");
         assert_eq!(unwrap!(super::get_uint(&mut cursor, Some(1234))), 999999);
 
         cursor = make_cursor("-1");
         assert!(super::get_uint(&mut cursor, None).is_err());
         cursor = make_cursor("gibberish");
-        assert!(super::get_uint(&mut cursor, None).is_err());
-        cursor = make_cursor("");
         assert!(super::get_uint(&mut cursor, None).is_err());
     }
 }

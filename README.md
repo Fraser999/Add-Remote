@@ -1,6 +1,13 @@
-# add_remote
+# add-remote
 
 An interactive CLI tool to add a remote fork to a local Git repository.
+
+Default aliases can be added to your .gitconfig file under the key `[add-remote]`.  E.g.
+
+```
+git config --global --add add-remote.Fraser999 Fraser
+```
+
 
 ## License
 
