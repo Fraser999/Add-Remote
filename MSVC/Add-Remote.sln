@@ -1,0 +1,20 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{911E67C6-3D85-4FCE-B560-20A9C3E3FF48}") = "add_remote", "Add-Remote\target\stable\debug\add_remote.exe", "{00000000-0000-0000-0000-000000000000}"
+	ProjectSection(DebuggerProjectSystem) = preProject
+		Executable = Add-Remote\target\stable\debug\add_remote.exe
+		Arguments =
+		StartingDirectory = Add-Remote\target\stable\debug
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Natvis", "Natvis", "{00000000-0000-0000-0000-000000000000}"
+	ProjectSection(SolutionItems) = preProject
+		liballoc.natvis = liballoc.natvis
+		libcollections.natvis = libcollections.natvis
+		libcore.natvis = libcore.natvis
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{00000000-0000-0000-0000-000000000000}"
+	ProjectSection(SolutionItems) = preProject
+		..\src\main.rs = ..\src\main.rs
+	EndProjectSection
+EndProject

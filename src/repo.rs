@@ -99,7 +99,7 @@ impl Repo {
             } else {
                 yellow!("Choose fork (enter index number): ");
             }
-            #[cfg_attr(feature="cargo-clippy", allow(cast_possible_truncation))]
+            #[cfg_attr(feature = "cargo-clippy", allow(cast_possible_truncation))]
             match get_uint(&mut self.stdin.lock(), default) {
                 Err(error) => {
                     red_ln!("{}", error);
@@ -177,7 +177,7 @@ impl Repo {
 
     /// Process the user's choices, i.e. add the new remote.  Also calls `git fetch` for the new
     /// remote and displays the remotes when complete.
-    #[cfg_attr(feature="cargo-clippy", allow(use_debug))]
+    #[cfg_attr(feature = "cargo-clippy", allow(use_debug))]
     pub fn set_remote(&self) {
         prnt_ln!("");
         let remotes_before = self.git_remote_verbose_output();
@@ -247,9 +247,8 @@ impl Repo {
     /// not being executed from within a Git repository, so we print an error message to that effect
     /// exit with a non-zero code.
     fn populate_local_remotes(&mut self) {
-        let local_remotes_output = unwrap!(Command::new(&self.git)
-                                               .args(&["remote", "show"])
-                                               .output());
+        let local_remotes_output =
+            unwrap!(Command::new(&self.git).args(&["remote", "show"]).output());
         // Get list of local remotes.
         if !local_remotes_output.status.success() {
             red_ln!("Failed to execute 'git remote show'.  Execute this program from inside a Git \
@@ -343,14 +342,16 @@ impl Repo {
         }
         // Choose the main fork/source owner if available.
         if let Ok(index) = self.available_forks
-               .binary_search_by_key(&self.main_fork_owner.0.to_lowercase(),
-                                     |&(ref owner, _)| owner.0.to_lowercase()) {
+               .binary_search_by_key(&self.main_fork_owner.0.to_lowercase(), |&(ref owner, _)| {
+            owner.0.to_lowercase()
+        }) {
             return Some(index as u64);
         }
         // Next look for "maidsafe".
         if let Ok(index) = self.available_forks
-               .binary_search_by_key(&"maidsafe".to_string(),
-                                     |&(ref owner, _)| owner.0.to_lowercase()) {
+               .binary_search_by_key(&"maidsafe".to_string(), |&(ref owner, _)| {
+            owner.0.to_lowercase()
+        }) {
             return Some(index as u64);
         }
         None
@@ -369,9 +370,7 @@ impl Repo {
                                  .args(&["config", &alias_arg])
                                  .output());
         if output.status.success() {
-            String::from_utf8_lossy(&output.stdout)
-                .trim()
-                .to_string()
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
         } else {
             chosen_owner.0.clone()
         }
