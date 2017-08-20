@@ -1,6 +1,7 @@
 use super::input_getter::{get_bool, get_string, get_uint};
 use find_git;
 use reqwest;
+use reqwest::header::{Link, RelationType};
 use serde_json::{self, Value};
 use std::collections::HashMap;
 use std::io::{self, Read, Stdin};
@@ -77,8 +78,9 @@ impl Repo {
     /// Displays the collection of available forks.
     pub fn show_available_forks(&self) {
         prnt_ln!("Available forks:");
+        let first_column_width = self.available_forks.len().to_string().len() + 2;
         for (index, &(ref owner, _)) in self.available_forks.iter().enumerate() {
-            prnt_ln!("{:<4}{}", index, owner.0);
+            prnt_ln!("{:<width$}{}", index, owner.0, width = first_column_width);
         }
     }
 
@@ -152,7 +154,7 @@ impl Repo {
                 }
                 Ok(false) => return,
                 Ok(true) => {
-                    let git_config_arg = format!("add-remote.{}", fork_name);
+                    let git_config_arg = format!("add-remote.'Fork Alias'.{}", fork_name);
                     let output = unwrap!(Command::new(&self.git)
                                              .args(&["config",
                                                      "--global",
@@ -228,8 +230,9 @@ impl Repo {
         prnt_ln!("\n{}", branches);
     }
 
-    /// Query GitHub's API and return the contents of the response.  Panics on failure.
-    fn github_get(request: &str) -> String {
+    /// Query GitHub's API and return the contents of the response along with an optional link to
+    /// the next page if one exists.  Panics on failure.
+    fn github_get(request: &str) -> (String, Option<String>) {
         let mut response = unwrap!(reqwest::get(request));
         if !response.status().is_success() {
             panic!("\nFailed to GET {}\nResponse status: {}\nResponse headers:\n{}",
@@ -237,9 +240,19 @@ impl Repo {
                    response.status(),
                    response.headers());
         }
+        let next_page_link: Option<String> = response.headers().get::<Link>().and_then(|link| {
+            let link_to_next = link.values().iter().find(|&link_value| {
+                link_value.rel().map_or(false, |relation_types| {
+                    relation_types
+                        .iter()
+                        .any(|relation_type| *relation_type == RelationType::Next)
+                })
+            });
+            link_to_next.map(|link_value| link_value.link().to_string())
+        });
         let mut content = String::new();
         let _ = unwrap!(response.read_to_string(&mut content));
-        content
+        (content, next_page_link)
     }
 
     /// Calls `git remote show` and `git remote get-url <name>` for each remote found to populate
@@ -287,7 +300,7 @@ impl Repo {
     fn populate_main_fork_details(&mut self) {
         let (owner, &(ref name, ..)) = unwrap!(self.local_remotes.iter().next());
         let request = format!("{}{}/{}", GITHUB_API, owner.0, name.0);
-        let response = Self::github_get(&request);
+        let response = Self::github_get(&request).0;
         let response_as_json: Value = unwrap!(serde_json::from_str(&response));
         self.main_fork_owner = match response_as_json["source"]["owner"]["login"] {
             Value::Null => Owner(unwrap!(response_as_json["owner"]["login"].as_str()).to_string()),
@@ -308,20 +321,23 @@ impl Repo {
 
     /// Send GET to GitHub to retrieve the list of forks and their details.
     fn populate_available_forks(&mut self) {
-        let request = format!("{}{}/{}/forks?per_page=100",
-                              GITHUB_API,
-                              self.main_fork_owner.0,
-                              self.main_fork_name.0);
-        let response = Self::github_get(&request);
-        let response_as_json: Value = unwrap!(serde_json::from_str(&response));
-        if let Value::Array(values) = response_as_json {
-            for value in &values {
-                let owner = Owner(unwrap!(value["owner"]["login"].as_str()).to_string());
-                let url = Url(unwrap!(value["html_url"].as_str()).to_string());
-                if !self.local_remotes.contains_key(&owner) {
-                    self.available_forks.push((owner, url));
+        let mut optional_request = Some(format!("{}{}/{}/forks?per_page=100",
+                                                GITHUB_API,
+                                                self.main_fork_owner.0,
+                                                self.main_fork_name.0));
+        while let Some(request) = optional_request {
+            let (response, next_page_link) = Self::github_get(&request);
+            let response_as_json: Value = unwrap!(serde_json::from_str(&response));
+            if let Value::Array(values) = response_as_json {
+                for value in &values {
+                    let owner = Owner(unwrap!(value["owner"]["login"].as_str()).to_string());
+                    let url = Url(unwrap!(value["html_url"].as_str()).to_string());
+                    if !self.local_remotes.contains_key(&owner) {
+                        self.available_forks.push((owner, url));
+                    }
                 }
             }
+            optional_request = next_page_link;
         }
         // Add the main fork/source's details too if required.
         if !self.local_remotes.contains_key(&self.main_fork_owner) {
@@ -333,8 +349,8 @@ impl Repo {
     }
 
     /// Suggests an index of `available_forks` to use as a default for the user's choice.  Favours
-    /// the available one if there is only one available, then the main fork/source owner, then
-    /// "maidsafe", otherwise returns `None`.
+    /// the available one if there is only one available, then the main fork/source owner, then the
+    /// Git config value of `add-remote.preferredFork` if it's set, otherwise returns `None`.
     fn suggest_fork(&self) -> Option<u64> {
         // Return 0 if there's only one available.
         if self.available_forks.len() == 1 {
@@ -347,30 +363,40 @@ impl Repo {
         }) {
             return Some(index as u64);
         }
-        // Next look for "maidsafe".
-        if let Ok(index) = self.available_forks
-               .binary_search_by_key(&"maidsafe".to_string(), |&(ref owner, _)| {
-            owner.0.to_lowercase()
-        }) {
-            return Some(index as u64);
+        // Next look for `add-remote.preferredFork` in Git config.
+        let output = unwrap!(Command::new(&self.git)
+                                 .args(&["config", "add-remote.preferredFork"])
+                                 .output());
+        if output.status.success() {
+            let preferred = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if let Ok(index) =
+                self.available_forks
+                    .binary_search_by_key(&preferred, |&(ref owner, _)| owner.0.to_lowercase()) {
+                return Some(index as u64);
+            }
         }
         None
     }
 
-    /// Suggests a name to use for the remote.  Uses "upstream" if the chosen fork is the main fork/
-    /// source, then falls back to the map of known users, and finally suggests the owner name.
+    /// Suggests a name to use for the remote.  Uses the Git config value for
+    /// `add-remote.mainForkOwnerAlias` (or "upstream" if this is not set) if the chosen fork is the
+    /// main fork/source, then falls back to the map of known users (entries under the Git config
+    /// subkey of `add-remote.Fork Alias`), and finally suggests the owner name.
     fn suggest_alias(&self) -> String {
         let chosen_owner = &self.available_forks[self.chosen_fork_index].0;
-        if *chosen_owner == self.main_fork_owner {
-            return "upstream".to_string();
-        }
+        let alias_arg = if *chosen_owner == self.main_fork_owner {
+            "add-remote.mainForkOwnerAlias".to_string()
+        } else {
+            format!("add-remote.'Fork Alias'.{}", chosen_owner.0)
+        };
 
-        let alias_arg = format!("add-remote.{}", chosen_owner.0);
         let output = unwrap!(Command::new(&self.git)
                                  .args(&["config", &alias_arg])
                                  .output());
         if output.status.success() {
             String::from_utf8_lossy(&output.stdout).trim().to_string()
+        } else if *chosen_owner == self.main_fork_owner {
+            "upstream".to_string()
         } else {
             chosen_owner.0.clone()
         }
@@ -390,5 +416,35 @@ impl Repo {
                 "Failed to run 'git branch --list {} -vr --sort=-committerdate'",
                 alias_arg);
         String::from_utf8_lossy(&output.stdout).to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn populate_available_forks() {
+        let git = unwrap!(find_git::git_path(), "Unable to find Git executable.");
+        let mut repo = Repo {
+            local_remotes: HashMap::new(),
+            available_forks: Vec::new(),
+            main_fork_owner: Owner::default(),
+            main_fork_name: Name::default(),
+            main_fork_url: Url::default(),
+            git: git,
+            stdin: io::stdin(),
+            chosen_fork_index: 1 << 31,
+            chosen_remote_alias: RemoteAlias::default(),
+        };
+        let _ = repo.local_remotes.insert(Owner("Fraser999".to_string()),
+                                          (Name("cargo".to_string()),
+                                           RemoteAlias("origin".to_string()),
+                                           Url("https://github.com/Fraser999/cargo.git"
+                                                   .to_string())));
+        repo.populate_main_fork_details();
+        repo.populate_available_forks();
+        repo.show_available_forks();
+        assert!(repo.available_forks.len() > 100);
     }
 }
