@@ -38,8 +38,7 @@ value will be presented, chosen as follows:
 
 * if this is the main fork/source owner, uses the Git config value of
 `add-remote.mainForkOwnerAlias` if set, or else uses `"upstream"`
-* uses the Git config value from the map of aliases under the subkey `add-remote.'Fork Alias'` if
-set
+* uses the Git config value from the map of aliases under the subkey `add-remote.forkAlias` if set
 * uses the fork-owner's name
 
 You can set `add-remote.mainForkOwnerAlias` (e.g. to `owner`) by running:
@@ -49,11 +48,11 @@ git config --global --add add-remote.mainForkOwnerAlias owner
 ```
 
 Default aliases can be added to your .gitconfig file under the subkey
-`add-remote.'Fork Alias'.<owner's name>` by running e.g:
+`add-remote.forkAlias.<owner's name>` by running e.g:
 
 ```
-git config --global --add add-remote.'Fork Alias'.dirvine David
-git config --global --add add-remote.'Fork Alias'.Viv-Rajkumar Viv
+git config --global --add add-remote.forkAlias.dirvine David
+git config --global --add add-remote.forkAlias.Viv-Rajkumar Viv
 ```
 
 Having run these Git config commands, your .gitconfig should contain the following:
@@ -62,14 +61,15 @@ Having run these Git config commands, your .gitconfig should contain the followi
 [add-remote]
     preferredFork = maidsafe
     mainForkOwnerAlias = owner
-[add-remote "Fork Alias"]
+[add-remote "forkAlias"]
     dirvine = David
     Viv-Rajkumar = Viv
 ```
 
-## Todo
+## Note
 
-* Support GitLab API
+`add-remote` only works with projects hosted on GitHub currently since GitLab's API doesn't support
+querying for a list of project forks.
 
 ## License
 

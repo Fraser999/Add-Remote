@@ -24,8 +24,6 @@ use repo::Repo;
 use std::env;
 use std::process;
 
-// TODO: Support GitLab API.
-
 /// Main function.
 fn main() {
     unwrap!(ctrlc::set_handler(move || process::exit(0)), "Error setting Ctrl-C handler");
@@ -99,7 +97,7 @@ value will be presented, chosen as follows:
         r#" if set, or else uses "upstream"
 * uses the Git config value from the map of aliases under the subkey "#
     );
-    dark_cyan!("add-remote.'Fork Alias'");
+    dark_cyan!("add-remote.forkAlias");
     prnt!(
         r#" if set
 * uses the fork-owner's name
@@ -114,10 +112,10 @@ You can set "#
 Default aliases can be added to your .gitconfig file under the subkey
 "#
     );
-    dark_cyan!("add-remote.'Fork Alias'.<owner's name>");
+    dark_cyan!("add-remote.forkAlias.<owner's name>");
     prnt_ln!(" by running e.g:\n");
-    yellow_ln!("    git config --global --add add-remote.'Fork Alias'.dirvine David");
-    yellow_ln!("    git config --global --add add-remote.'Fork Alias'.Viv-Rajkumar Viv");
+    yellow_ln!("    git config --global --add add-remote.forkAlias.dirvine David");
+    yellow_ln!("    git config --global --add add-remote.forkAlias.Viv-Rajkumar Viv");
     prnt_ln!(
         r#"
 Having run these Git config commands, your .gitconfig should contain the following:
@@ -127,7 +125,7 @@ Having run these Git config commands, your .gitconfig should contain the followi
         r#"[add-remote]
     preferredFork = maidsafe
     mainForkOwnerAlias = owner
-[add-remote "Fork Alias"]
+[add-remote "forkAlias"]
     dirvine = David
     Viv-Rajkumar = Viv
 "#

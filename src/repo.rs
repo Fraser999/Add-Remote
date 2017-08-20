@@ -154,7 +154,7 @@ impl Repo {
                 }
                 Ok(false) => return,
                 Ok(true) => {
-                    let git_config_arg = format!("add-remote.'Fork Alias'.{}", fork_name);
+                    let git_config_arg = format!("add-remote.forkAlias.{}", fork_name);
                     let output = unwrap!(Command::new(&self.git)
                                              .args(&["config",
                                                      "--global",
@@ -286,6 +286,11 @@ impl Repo {
             {
                 let mut owner_and_repo = url.trim_left_matches("git@github.com:");
                 owner_and_repo = owner_and_repo.trim_left_matches("https://github.com/");
+                if owner_and_repo == url {
+                    red_ln!("This repository doesn't appear to be hosted on GitHub.  'add-remote' \
+                            can only be used with GitHub projects.");
+                    process::exit(-3);
+                }
                 owner_and_repo = owner_and_repo.trim_right_matches(".git");
                 let mut split_itr = owner_and_repo.split('/');
                 owner = Owner(unwrap!(split_itr.next()).to_string());
@@ -381,13 +386,13 @@ impl Repo {
     /// Suggests a name to use for the remote.  Uses the Git config value for
     /// `add-remote.mainForkOwnerAlias` (or "upstream" if this is not set) if the chosen fork is the
     /// main fork/source, then falls back to the map of known users (entries under the Git config
-    /// subkey of `add-remote.Fork Alias`), and finally suggests the owner name.
+    /// subkey of `add-remote.forkAlias`), and finally suggests the owner name.
     fn suggest_alias(&self) -> String {
         let chosen_owner = &self.available_forks[self.chosen_fork_index].0;
         let alias_arg = if *chosen_owner == self.main_fork_owner {
             "add-remote.mainForkOwnerAlias".to_string()
         } else {
-            format!("add-remote.'Fork Alias'.{}", chosen_owner.0)
+            format!("add-remote.forkAlias.{}", chosen_owner.0)
         };
 
         let output = unwrap!(Command::new(&self.git)
