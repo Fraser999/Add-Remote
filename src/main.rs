@@ -68,7 +68,7 @@ Configuration
 'add-remote' will display all forks which aren't currently copied locally, then ask you to choose
 one and to provide an alias for it.
 
-It will offer a default selection (i.e. just hit <enter> to select it) if it can.  The default will
+It will offer a default selection (i.e. just hit <return> to select it) if it can.  The default will
 be chosen as follows:
 
 * if there's only one fork available, it will be selected, or else
