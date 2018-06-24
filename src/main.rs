@@ -1,10 +1,12 @@
 //! An interactive CLI tool to add a remote fork to a local Git repository.
 
 #![forbid(warnings)]
-#![warn(missing_copy_implementations, trivial_casts, trivial_numeric_casts, unsafe_code,
-        unused_extern_crates, unused_import_braces, unused_qualifications, unused_results,
-        variant_size_differences)]
-#![cfg_attr(feature="cargo-clippy", deny(clippy, clippy_pedantic))]
+#![warn(
+    missing_copy_implementations, trivial_casts, trivial_numeric_casts, unsafe_code,
+    unused_extern_crates, unused_import_braces, unused_qualifications, unused_results,
+    variant_size_differences
+)]
+#![cfg_attr(feature = "cargo-clippy", deny(clippy, clippy_pedantic))]
 
 #[macro_use]
 extern crate colour;
@@ -25,18 +27,23 @@ use std::env;
 use std::process;
 
 /// Main function.
+#[cfg_attr(feature = "cargo-clippy", allow(similar_names))]
 fn main() {
-    unwrap!(ctrlc::set_handler(move || process::exit(0)), "Error setting Ctrl-C handler");
-
+    unwrap!(
+        ctrlc::set_handler(move || process::exit(0)),
+        "Error setting Ctrl-C handler"
+    );
     let args: Vec<_> = env::args().collect();
 
     if args.iter()
-           .any(|arg| arg == "-h" || arg == "/?" || arg == "--help") {
+        .any(|arg| arg == "-h" || arg == "/?" || arg == "--help")
+    {
         return print_help();
     }
 
     if args.iter()
-           .any(|arg| arg == "-v" || arg == "-V" || arg == "--version") {
+        .any(|arg| arg == "-v" || arg == "-V" || arg == "--version")
+    {
         prnt_ln!("{}", env!("CARGO_PKG_VERSION"));
         return;
     }
@@ -59,9 +66,9 @@ fn main() {
 fn print_help() {
     prnt!(
         r#"
-Add a remote fork to a local Git repository.  When run from a Git repo, it queries GitHub for the
-full list of forks and offers simple choices for adding one under a local alias.  The added fork
-will be configured with a pull-url only; the push-url will be disabled.
+Add a remote fork to a local Git repository.  When run from a Git repo, it queries GitLab or GitHub
+for the full list of forks and offers simple choices for adding one under a local alias.  The added
+fork will be configured with a pull-url only; the push-url will be disabled.
 
 Configuration
 =============
@@ -85,16 +92,16 @@ You can set "#
     dark_cyan!("add-remote.preferredFork");
     prnt_ln!(" (e.g. to 'maidsafe') by running:\n");
     yellow_ln!("    git config --global --add add-remote.preferredFork maidsafe");
-    prnt_ln!(
+    prnt!(
         r#"
 Having chosen the fork to add, you will then be asked to provide an alias for it.  Again, a default
 value will be presented, chosen as follows:
 
-* if this is the main fork/source owner, uses the Git config value of"#
+* if this is the main fork/source owner, uses the Git config value of "#
     );
-    dark_cyan!("add-remote.mainForkOwnerAlias");
+    dark_cyan_ln!("add-remote.mainForkOwnerAlias");
     prnt!(
-        r#" if set, or else uses "upstream"
+        r#"  if set, or else uses "upstream"
 * uses the Git config value from the map of aliases under the subkey "#
     );
     dark_cyan!("add-remote.forkAlias");
@@ -118,6 +125,23 @@ Default aliases can be added to your .gitconfig file under the subkey
     yellow_ln!("    git config --global --add add-remote.forkAlias.Viv-Rajkumar Viv");
     prnt_ln!(
         r#"
+To use `add-remote` with any GitLab repository or with a private GitHub one, you need to provide a
+Personal Access Token via git config.
+
+For GitLab, create a token (https://gitlab.com/profile/personal_access_tokens) ensuring it has "api"
+scope, then add it to your .gitconfig:
+"#
+    );
+    yellow_ln!("    git config --global --add add-remote.gitLabToken <GitLab Token's Value>");
+    prnt_ln!(
+        r#"
+For GitHub, create a token (https://github.com/settings/tokens) ensuring it has full "repo" scope,
+then add it to your .gitconfig:
+"#
+    );
+    yellow_ln!("    git config --global --add add-remote.gitHubToken <GitHub Token's Value>");
+    prnt_ln!(
+        r#"
 Having run these Git config commands, your .gitconfig should contain the following:
 "#
     );
@@ -125,6 +149,8 @@ Having run these Git config commands, your .gitconfig should contain the followi
         r#"[add-remote]
     preferredFork = maidsafe
     mainForkOwnerAlias = owner
+    gitLabToken = <GitLab Token's Value>
+    gitHubToken = <GitHub Token's Value>
 [add-remote "forkAlias"]
     dirvine = David
     Viv-Rajkumar = Viv

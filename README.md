@@ -1,8 +1,9 @@
 # add-remote
 
 An interactive CLI tool to add a remote fork to a local Git repository.  When run from a Git repo,
-it queries GitHub for the full list of forks and offers simple choices for adding one under a local
-alias.  The added fork will be configured with a pull-url only; the push-url will be disabled.
+it queries GitLab or GitHub as appropriate for the full list of forks and offers simple choices for
+adding one under a local alias.  The added fork will be configured with a pull-url only; the
+push-url will be disabled.
 
 ## Install
 
@@ -19,6 +20,8 @@ Simply `cd` to a Git repository and run `add-remote`.
 `add-remote` will display all forks which aren't currently copied locally, then ask you to choose
 one and to provide an alias for it.
 
+### Preferred Fork
+
 It will offer a default selection (i.e. just hit <kbd>return</kbd> to select it) if it can.  The
 default will be chosen as follows:
 
@@ -32,6 +35,8 @@ You can set `add-remote.preferredFork` (e.g. to `maidsafe`) by running:
 ```
 git config --global --add add-remote.preferredFork maidsafe
 ```
+
+### Fork Aliases
 
 Having chosen the fork to add, you will then be asked to provide an alias for it.  Again, a default
 value will be presented, chosen as follows:
@@ -55,12 +60,33 @@ git config --global --add add-remote.forkAlias.dirvine David
 git config --global --add add-remote.forkAlias.Viv-Rajkumar Viv
 ```
 
+### Personal Access Tokens
+
+To use `add-remote` with any GitLab repository or with a private GitHub one, you need to provide a
+Personal Access Token via git config.
+
+For GitLab, [create a token](https://gitlab.com/profile/personal_access_tokens) ensuring it has
+"api" scope, then add it to your .gitconfig:
+
+```
+git config --global --add add-remote.gitLabToken <GitLab Token's Value>
+```
+
+For GitHub, [create a token](https://github.com/settings/tokens) ensuring it has full "repo" scope,
+then add it to your .gitconfig:
+
+```
+git config --global --add add-remote.gitHubToken <GitHub Token's Value>
+```
+
 Having run these Git config commands, your .gitconfig should contain the following:
 
 ```
 [add-remote]
     preferredFork = maidsafe
     mainForkOwnerAlias = owner
+    gitLabToken = <GitLab Token's Value>
+    gitHubToken = <GitHub Token's Value>
 [add-remote "forkAlias"]
     dirvine = David
     Viv-Rajkumar = Viv
@@ -68,15 +94,14 @@ Having run these Git config commands, your .gitconfig should contain the followi
 
 ## Note
 
-`add-remote` only works with projects hosted on GitHub currently since GitLab's API doesn't support
-querying for a list of project forks.
+`add-remote` only works with projects hosted on GitLab or GitHub.
 
 ## License
 
 Licensed under either of
 
-* Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-* MIT License ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+* Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or https://opensource.org/licenses/Apache-2.0)
+* MIT License ([LICENSE-MIT](LICENSE-MIT) or https://opensource.org/licenses/MIT)
 
 at your option.
 

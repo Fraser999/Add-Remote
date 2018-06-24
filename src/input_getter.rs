@@ -86,9 +86,9 @@ mod tests {
         let mut cursor = make_cursor("0");
         assert_eq!(unwrap!(super::get_uint(&mut cursor, None)), 0);
         cursor = make_cursor("999999");
-        assert_eq!(unwrap!(super::get_uint(&mut cursor, None)), 999999);
+        assert_eq!(unwrap!(super::get_uint(&mut cursor, None)), 999_999);
         cursor = make_cursor("999999");
-        assert_eq!(unwrap!(super::get_uint(&mut cursor, Some(1234))), 999999);
+        assert_eq!(unwrap!(super::get_uint(&mut cursor, Some(1234))), 999_999);
 
         cursor = make_cursor("-1");
         assert!(super::get_uint(&mut cursor, None).is_err());
