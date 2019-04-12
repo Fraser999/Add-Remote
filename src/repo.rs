@@ -1,12 +1,16 @@
 use super::input_getter::{get_bool, get_string, get_uint};
 use find_git;
-use reqwest;
-use reqwest::header::{Link, RelationType};
+use reqwest::{
+    self,
+    header::{HeaderValue, LINK},
+};
 use serde_json::{self, Value};
-use std::collections::HashMap;
-use std::io::{self, Read, Stdin};
-use std::path::PathBuf;
-use std::process::{self, Command};
+use std::{
+    collections::HashMap,
+    io::{self, Read, Stdin},
+    path::PathBuf,
+    process::{self, Command},
+};
 
 /// Base URL for sending GET requests to GitLab for retrieving info about repositories.
 const GITLAB_API: &str = "https://gitlab.com/api/v4/projects/";
@@ -34,11 +38,11 @@ enum Url {
 
 impl Url {
     fn new(url: &str) -> Option<(Self, Owner, Name)> {
-        let mut owner_and_repo = url.trim_left_matches("git@gitlab.com:");
-        owner_and_repo = owner_and_repo.trim_left_matches("https://gitlab.com/");
+        let mut owner_and_repo = url.trim_start_matches("git@gitlab.com:");
+        owner_and_repo = owner_and_repo.trim_start_matches("https://gitlab.com/");
         let checked_url = if owner_and_repo == url {
-            owner_and_repo = url.trim_left_matches("git@github.com:");
-            owner_and_repo = owner_and_repo.trim_left_matches("https://github.com/");
+            owner_and_repo = url.trim_start_matches("git@github.com:");
+            owner_and_repo = owner_and_repo.trim_start_matches("https://github.com/");
             if owner_and_repo == url {
                 return None;
             }
@@ -46,7 +50,7 @@ impl Url {
         } else {
             Url::GitLab(url.to_string())
         };
-        owner_and_repo = owner_and_repo.trim_right_matches(".git");
+        owner_and_repo = owner_and_repo.trim_end_matches(".git");
         let (owner, name) = Self::split_owner_and_repo(owner_and_repo);
         Some((checked_url, owner, name))
     }
@@ -137,7 +141,7 @@ impl Repo {
             } else {
                 yellow!("Choose fork (enter index number): ");
             }
-            #[cfg_attr(feature = "cargo-clippy", allow(cast_possible_truncation))]
+            #[allow(clippy::cast_possible_truncation)]
             match get_uint(&mut self.stdin.lock(), default) {
                 Err(error) => {
                     red_ln!("{}", error);
@@ -193,17 +197,15 @@ impl Repo {
                 Ok(false) => return,
                 Ok(true) => {
                     let git_config_arg = format!("add-remote.forkAlias.{}", fork_name);
-                    let output = unwrap!(
-                        Command::new(&self.git)
-                            .args(&[
-                                "config",
-                                "--global",
-                                "--replace-all",
-                                &git_config_arg,
-                                alias
-                            ])
-                            .output()
-                    );
+                    let output = unwrap!(Command::new(&self.git)
+                        .args(&[
+                            "config",
+                            "--global",
+                            "--replace-all",
+                            &git_config_arg,
+                            alias
+                        ])
+                        .output());
                     if output.status.success() {
                         green_ln!(
                             "Alias '{}' -> '{}' successfully set in your global git-config",
@@ -225,7 +227,6 @@ impl Repo {
 
     /// Process the user's choices, i.e. add the new remote.  Also calls `git fetch` for the new
     /// remote and displays the remotes when complete.
-    #[cfg_attr(feature = "cargo-clippy", allow(use_debug))]
     pub fn set_remote(&self) {
         prnt_ln!("");
         let remotes_before = self.git_remote_verbose_output();
@@ -299,7 +300,7 @@ impl Repo {
         let mut response = unwrap!(reqwest::get(request));
         if !response.status().is_success() {
             panic!(
-                "\nFailed to GET {}\nResponse status: {}\nResponse headers:\n{}\n\nNote that \
+                "\nFailed to GET {}\nResponse status: {}\nResponse headers:\n{:?}\n\nNote that \
                  Personal Access Tokens are required in some cases.\nFor full details, see \
                  https://github.com/Fraser999/Add-Remote#personal-access-tokens.",
                 request,
@@ -307,19 +308,31 @@ impl Repo {
                 response.headers()
             );
         }
-        let next_page_link: Option<String> = response.headers().get::<Link>().and_then(|link| {
-            let link_to_next = link.values().iter().find(|&link_value| {
-                link_value.rel().map_or(false, |relation_types| {
-                    relation_types
-                        .iter()
-                        .any(|relation_type| *relation_type == RelationType::Next)
-                })
-            });
-            link_to_next.map(|link_value| link_value.link().to_string())
-        });
+        let next_page_link = response
+            .headers()
+            .get(LINK)
+            .and_then(Self::get_link_to_next_from_header);
         let mut content = String::new();
         let _ = unwrap!(response.read_to_string(&mut content));
         (content, next_page_link)
+    }
+
+    fn get_link_to_next_from_header(header_value: &HeaderValue) -> Option<String> {
+        let search_str = "rel=\"next\"";
+        let lhs_trim: &[_] = &[' ', '<'];
+        let rhs_trim: &[_] = &[' ', '>', ';'];
+        unwrap!(header_value.to_str()).split(',').find_map(|link| {
+            if link.contains(search_str) {
+                Some(
+                    link.trim_start_matches(lhs_trim)
+                        .trim_end_matches(search_str)
+                        .trim_end_matches(rhs_trim)
+                        .to_string(),
+                )
+            } else {
+                None
+            }
+        })
     }
 
     /// Calls `git remote show` and `git remote get-url <name>` for each remote found to populate
@@ -342,11 +355,9 @@ impl Repo {
 
         // For each, get the URL, and break this down to get the owner too.
         for remote_alias in local_remotes.lines() {
-            let url_output = unwrap!(
-                Command::new(&self.git)
-                    .args(&["remote", "get-url", remote_alias])
-                    .output()
-            );
+            let url_output = unwrap!(Command::new(&self.git)
+                .args(&["remote", "get-url", remote_alias])
+                .output());
             assert!(
                 url_output.status.success(),
                 "Failed to run 'git remote get-url {}'",
@@ -354,7 +365,8 @@ impl Repo {
             );
             let stdout = String::from_utf8_lossy(&url_output.stdout);
             if let Some((url, owner, name)) = Url::new(stdout.trim()) {
-                let _ = self.local_remotes
+                let _ = self
+                    .local_remotes
                     .insert(owner, (name, RemoteAlias(remote_alias.to_string()), url));
             } else {
                 continue;
@@ -371,12 +383,11 @@ impl Repo {
 
     /// Send GET to Gitlab/GitHub to allow retrieval of the main fork/source's details.
     fn populate_main_fork_details(&mut self) {
-        let (owner, name, url) = unwrap!(
-            self.local_remotes
-                .iter()
-                .map(|(owner, (name, _, url))| (owner.clone(), name.clone(), url.clone()))
-                .next()
-        );
+        let (owner, name, url) = unwrap!(self
+            .local_remotes
+            .iter()
+            .map(|(owner, (name, _, url))| (owner.clone(), name.clone(), url.clone()))
+            .next());
         match url {
             Url::GitLab(_) => {
                 if self.gitlab_token.is_none() {
@@ -442,9 +453,9 @@ impl Repo {
                 Url::GitLab(unwrap!(response_as_json["ssh_url_to_repo"].as_str()).to_string());
             return false;
         }
-        let (owner, name) = Url::split_owner_and_repo(unwrap!(
-            response_as_json["forked_from_project"]["path_with_namespace"].as_str()
-        ));
+        let (owner, name) = Url::split_owner_and_repo(unwrap!(response_as_json
+            ["forked_from_project"]["path_with_namespace"]
+            .as_str()));
         self.main_fork_owner = owner;
         self.main_fork_name = name;
         true
@@ -452,12 +463,11 @@ impl Repo {
 
     /// Send GET to Gitlab/GitHub to retrieve the list of forks and their details.
     fn populate_available_forks(&mut self) {
-        let first_url = unwrap!(
-            self.local_remotes
-                .values()
-                .map(|(_, _, url)| url.clone())
-                .next()
-        );
+        let first_url = unwrap!(self
+            .local_remotes
+            .values()
+            .map(|(_, _, url)| url.clone())
+            .next());
         let mut optional_request = match first_url {
             Url::GitLab(_) => Some(format!(
                 "{}{}%2F{}/forks?per_page=200;private_token={}",
@@ -485,9 +495,9 @@ impl Repo {
                 for value in &values {
                     let (owner, url) = match first_url {
                         Url::GitLab(_) => {
-                            let (owner, _) = Url::split_owner_and_repo(unwrap!(
-                                value["path_with_namespace"].as_str()
-                            ));
+                            let (owner, _) = Url::split_owner_and_repo(unwrap!(value
+                                ["path_with_namespace"]
+                                .as_str()));
                             let url = unwrap!(value["ssh_url_to_repo"].as_str()).to_string();
                             let subfork_count = unwrap!(value["forks_count"].as_u64());
                             if owner != self.main_fork_owner && subfork_count > 0 {
@@ -532,10 +542,12 @@ impl Repo {
             return Some(0);
         }
         // Choose the main fork/source owner if available.
-        if let Ok(index) = self.available_forks
+        if let Ok(index) = self
+            .available_forks
             .binary_search_by_key(&self.main_fork_owner.0.to_lowercase(), |&(ref owner, _)| {
                 owner.0.to_lowercase()
-            }) {
+            })
+        {
             return Some(index as u64);
         }
         // Next look for `add-remote.preferredFork` in Git config.
@@ -580,17 +592,15 @@ impl Repo {
     /// Runs `git branch --list <Alias>/* -vr --sort=-committerdate` and returns the output.
     fn git_branch_verbose_output(&self, alias: &str) -> String {
         let alias_arg = format!("{}/*", alias);
-        let output = unwrap!(
-            Command::new(&self.git)
-                .args(&[
-                    "branch",
-                    "--list",
-                    &alias_arg,
-                    "-vr",
-                    "--sort=-committerdate"
-                ])
-                .output()
-        );
+        let output = unwrap!(Command::new(&self.git)
+            .args(&[
+                "branch",
+                "--list",
+                &alias_arg,
+                "-vr",
+                "--sort=-committerdate"
+            ])
+            .output());
         assert!(
             output.status.success(),
             "Failed to run 'git branch --list {} -vr --sort=-committerdate'",
@@ -618,6 +628,6 @@ mod tests {
         repo.populate_main_fork_details();
         repo.populate_available_forks();
         repo.show_available_forks();
-        assert!(repo.available_forks.len() > 100);
+        assert!(repo.available_forks.len() > 101);
     }
 }

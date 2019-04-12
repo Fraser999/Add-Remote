@@ -1,5 +1,4 @@
-use std::io::BufRead;
-use std::process;
+use std::{io::BufRead, process};
 
 /// Reads a line from from `reader` and strips trailing whitespace.
 pub fn get_string<T: BufRead>(reader: &mut T) -> Result<String, String> {
@@ -9,7 +8,7 @@ pub fn get_string<T: BufRead>(reader: &mut T) -> Result<String, String> {
             // A signal was sent - just exit the process as it was likely Ctrl-C.
             process::exit(0);
         }
-        Ok(_) => Ok(input.trim_right().to_string()),
+        Ok(_) => Ok(input.trim_end().to_string()),
         Err(error) => Err(format!("Failed to read from std::cin: {}.", error)),
     }
 }

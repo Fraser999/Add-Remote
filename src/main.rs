@@ -2,11 +2,18 @@
 
 #![forbid(warnings)]
 #![warn(
-    missing_copy_implementations, trivial_casts, trivial_numeric_casts, unsafe_code,
-    unused_extern_crates, unused_import_braces, unused_qualifications, unused_results,
-    variant_size_differences
+    missing_copy_implementations,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unused_extern_crates,
+    unused_import_braces,
+    unused_qualifications,
+    unused_results,
+    variant_size_differences,
+    clippy::all,
+    clippy::pedantic
 )]
-#![cfg_attr(feature = "cargo-clippy", deny(clippy, clippy_pedantic))]
 
 #[macro_use]
 extern crate colour;
@@ -23,11 +30,9 @@ mod input_getter;
 mod repo;
 
 use repo::Repo;
-use std::env;
-use std::process;
+use std::{env, process};
 
 /// Main function.
-#[cfg_attr(feature = "cargo-clippy", allow(similar_names))]
 fn main() {
     unwrap!(
         ctrlc::set_handler(move || process::exit(0)),
@@ -35,13 +40,15 @@ fn main() {
     );
     let args: Vec<_> = env::args().collect();
 
-    if args.iter()
+    if args
+        .iter()
         .any(|arg| arg == "-h" || arg == "/?" || arg == "--help")
     {
         return print_help();
     }
 
-    if args.iter()
+    if args
+        .iter()
         .any(|arg| arg == "-v" || arg == "-V" || arg == "--version")
     {
         prnt_ln!("{}", env!("CARGO_PKG_VERSION"));

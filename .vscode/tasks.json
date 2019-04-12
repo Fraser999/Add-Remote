@@ -3,37 +3,7 @@
     "tasks": [
         {
             "label": "Clippy",
-            "command": "cargo +nightly$NIGHTLY_VERSION clippy --target-dir=target/clippy --all-targets",
-            "windows": {
-                "command": "cargo +nightly$env:NIGHTLY_VERSION clippy --target-dir=target/clippy --all-targets"
-            },
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            },
-            "type": "shell",
-            "presentation": {
-                "panel": "new"
-            },
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Build Release",
-            "command": "cargo build --target-dir=target/stable --release --verbose",
-            "group": "build",
-            "type": "shell",
-            "presentation": {
-                "panel": "new"
-            },
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Build Debug",
-            "command": "cargo build --target-dir=target/stable --verbose",
+            "command": "cargo clippy --target-dir=target/clippy --all-targets",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -47,8 +17,32 @@
             ]
         },
         {
+            "label": "Build Release",
+            "command": "cargo build --target-dir=target/stable --release",
+            "group": "build",
+            "type": "shell",
+            "presentation": {
+                "panel": "new"
+            },
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+        {
+            "label": "Build Debug",
+            "command": "cargo build --target-dir=target/stable",
+            "group": "build",
+            "type": "shell",
+            "presentation": {
+                "panel": "new"
+            },
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+        {
             "label": "Test Release Without Running",
-            "command": "cargo test --target-dir=target/stable --no-run --release --verbose",
+            "command": "cargo test --target-dir=target/stable --no-run --release",
             "group": "build",
             "type": "shell",
             "presentation": {
@@ -60,7 +54,7 @@
         },
         {
             "label": "Test Debug Without Running",
-            "command": "cargo test --target-dir=target/stable --no-run --verbose",
+            "command": "cargo test --target-dir=target/stable --no-run",
             "group": "build",
             "type": "shell",
             "presentation": {
@@ -96,7 +90,7 @@
         },
         {
             "label": "Update",
-            "command": "cargo update --verbose",
+            "command": "cargo update",
             "group": "build",
             "type": "shell",
             "presentation": {
@@ -120,7 +114,7 @@
         },
         {
             "label": "Test Release",
-            "command": "cargo test --target-dir=target/stable --release --verbose -- --nocapture --color=always",
+            "command": "cargo test --target-dir=target/stable --release -- --nocapture --color=always",
             "group": {
                 "kind": "test",
                 "isDefault": true
@@ -135,7 +129,7 @@
         },
         {
             "label": "Test Debug",
-            "command": "cargo test --target-dir=target/stable --verbose -- --nocapture --color=always",
+            "command": "cargo test --target-dir=target/stable -- --nocapture --color=always",
             "group": "test",
             "type": "shell",
             "presentation": {
@@ -147,7 +141,7 @@
         },
         {
             "label": "Run Release",
-            "command": "cargo run --target-dir=target/stable --release --verbose",
+            "command": "cargo run --target-dir=target/stable --release",
             "group": "test",
             "type": "shell",
             "presentation": {
@@ -159,7 +153,7 @@
         },
         {
             "label": "Run Debug",
-            "command": "cargo run --target-dir=target/stable --verbose",
+            "command": "cargo run --target-dir=target/stable",
             "group": "test",
             "type": "shell",
             "presentation": {
@@ -171,9 +165,9 @@
         },
         {
             "label": "Bench",
-            "command": "cargo +nightly$NIGHTLY_VERSION bench --target-dir=target/nightly/bench --verbose",
+            "command": "cargo +nightly$NIGHTLY_VERSION bench --target-dir=target/nightly/bench",
             "windows": {
-                "command": "cargo +nightly$env:NIGHTLY_VERSION bench --target-dir=target/nightly/bench --verbose",
+                "command": "cargo +nightly$env:NIGHTLY_VERSION bench --target-dir=target/nightly/bench",
             },
             "group": "test",
             "type": "shell",
