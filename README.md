@@ -56,8 +56,8 @@ Default aliases can be added to your .gitconfig file under the subkey
 `add-remote.forkAlias.<owner's name>` by running e.g:
 
 ```
-git config --global --add add-remote.forkAlias.dirvine David
-git config --global --add add-remote.forkAlias.Viv-Rajkumar Viv
+git config --global --add add-remote.forkAlias.anthonywilliams Anthony
+git config --global --add add-remote.forkAlias.hsutter Herb
 ```
 
 ### Personal Access Tokens
@@ -88,8 +88,8 @@ Having run these Git config commands, your .gitconfig should contain the followi
     gitLabToken = <GitLab Token's Value>
     gitHubToken = <GitHub Token's Value>
 [add-remote "forkAlias"]
-    dirvine = David
-    Viv-Rajkumar = Viv
+    anthonywilliams = Anthony
+    hsutter = Herb
 ```
 
 ## Note

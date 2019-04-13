@@ -3,7 +3,7 @@
     "tasks": [
         {
             "label": "Clippy",
-            "command": "cargo clippy --target-dir=target/clippy --all-targets",
+            "command": "cargo clippy --all-targets",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -17,9 +17,9 @@
             ]
         },
         {
-            "label": "Build Release",
-            "command": "cargo build --target-dir=target/stable --release",
-            "group": "build",
+            "label": "Test",
+            "command": "cargo test -- --nocapture --color=always",
+            "group": "test",
             "type": "shell",
             "presentation": {
                 "panel": "new"
@@ -29,9 +29,9 @@
             ]
         },
         {
-            "label": "Build Debug",
-            "command": "cargo build --target-dir=target/stable",
-            "group": "build",
+            "label": "Run Release",
+            "command": "cargo run --release -- --help",
+            "group": "test",
             "type": "shell",
             "presentation": {
                 "panel": "new"
@@ -41,45 +41,9 @@
             ]
         },
         {
-            "label": "Test Release Without Running",
-            "command": "cargo test --target-dir=target/stable --no-run --release",
-            "group": "build",
-            "type": "shell",
-            "presentation": {
-                "panel": "new"
-            },
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Test Debug Without Running",
-            "command": "cargo test --target-dir=target/stable --no-run",
-            "group": "build",
-            "type": "shell",
-            "presentation": {
-                "panel": "new"
-            },
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Doc Without Dependencies",
-            "command": "cargo doc --target-dir=target/stable --release --no-deps",
-            "group": "build",
-            "type": "shell",
-            "presentation": {
-                "panel": "new"
-            },
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Doc",
-            "command": "cargo doc --target-dir=target/stable --release",
-            "group": "build",
+            "label": "Run Debug",
+            "command": "cargo run -- --help",
+            "group": "test",
             "type": "shell",
             "presentation": {
                 "panel": "new"
@@ -96,9 +60,7 @@
             "presentation": {
                 "panel": "new"
             },
-            "problemMatcher": [
-                "$rustc"
-            ]
+            "problemMatcher": []
         },
         {
             "label": "Clean",
@@ -108,75 +70,7 @@
             "presentation": {
                 "panel": "new"
             },
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Test Release",
-            "command": "cargo test --target-dir=target/stable --release -- --nocapture --color=always",
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
-            "type": "shell",
-            "presentation": {
-                "panel": "new"
-            },
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Test Debug",
-            "command": "cargo test --target-dir=target/stable -- --nocapture --color=always",
-            "group": "test",
-            "type": "shell",
-            "presentation": {
-                "panel": "new"
-            },
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Run Release",
-            "command": "cargo run --target-dir=target/stable --release",
-            "group": "test",
-            "type": "shell",
-            "presentation": {
-                "panel": "new"
-            },
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Run Debug",
-            "command": "cargo run --target-dir=target/stable",
-            "group": "test",
-            "type": "shell",
-            "presentation": {
-                "panel": "new"
-            },
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Bench",
-            "command": "cargo +nightly$NIGHTLY_VERSION bench --target-dir=target/nightly/bench",
-            "windows": {
-                "command": "cargo +nightly$env:NIGHTLY_VERSION bench --target-dir=target/nightly/bench",
-            },
-            "group": "test",
-            "type": "shell",
-            "presentation": {
-                "panel": "new"
-            },
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
+            "problemMatcher": []
+        }
     ]
 }

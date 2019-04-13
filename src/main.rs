@@ -128,8 +128,8 @@ Default aliases can be added to your .gitconfig file under the subkey
     );
     dark_cyan!("add-remote.forkAlias.<owner's name>");
     prnt_ln!(" by running e.g:\n");
-    yellow_ln!("    git config --global --add add-remote.forkAlias.dirvine David");
-    yellow_ln!("    git config --global --add add-remote.forkAlias.Viv-Rajkumar Viv");
+    yellow_ln!("    git config --global --add add-remote.forkAlias.anthonywilliams Anthony");
+    yellow_ln!("    git config --global --add add-remote.forkAlias.hsutter Herb");
     prnt_ln!(
         r#"
 To use `add-remote` with any GitLab repository or with a private GitHub one, you need to provide a
@@ -159,8 +159,8 @@ Having run these Git config commands, your .gitconfig should contain the followi
     gitLabToken = <GitLab Token's Value>
     gitHubToken = <GitHub Token's Value>
 [add-remote "forkAlias"]
-    dirvine = David
-    Viv-Rajkumar = Viv
+    anthonywilliams = Anthony
+    hsutter = Herb
 "#
     );
 }
