@@ -34,6 +34,7 @@ pub fn get_uint<T: BufRead>(reader: &mut T, default: Option<u64>) -> Result<u64,
     if input.is_empty() {
         return default.ok_or(error);
     }
+    #[allow(clippy::map_err_ignore)]
     input.parse::<u64>().map_err(|_| error)
 }
 
@@ -48,30 +49,30 @@ mod tests {
     #[test]
     fn get_string() {
         let mut cursor = make_cursor("AbCd");
-        assert_eq!(unwrap!(super::get_string(&mut cursor)), "AbCd");
+        assert_eq!(super::get_string(&mut cursor).unwrap(), "AbCd");
     }
 
     #[test]
     fn get_bool() {
         // Cases where `get_bool()` returns Ok(true)
         let mut cursor = make_cursor("Y");
-        assert!(unwrap!(super::get_bool(&mut cursor, None)));
+        assert!(super::get_bool(&mut cursor, None).unwrap());
         cursor = make_cursor("Y");
-        assert!(unwrap!(super::get_bool(&mut cursor, Some(false))));
+        assert!(super::get_bool(&mut cursor, Some(false)).unwrap());
         cursor = make_cursor("y");
-        assert!(unwrap!(super::get_bool(&mut cursor, None)));
+        assert!(super::get_bool(&mut cursor, None).unwrap());
         cursor = make_cursor("y");
-        assert!(unwrap!(super::get_bool(&mut cursor, Some(false))));
+        assert!(super::get_bool(&mut cursor, Some(false)).unwrap());
 
         // Cases where `get_bool()` returns Ok(false)
         cursor = make_cursor("N");
-        assert!(!unwrap!(super::get_bool(&mut cursor, None)));
+        assert!(!super::get_bool(&mut cursor, None).unwrap());
         cursor = make_cursor("N");
-        assert!(!unwrap!(super::get_bool(&mut cursor, Some(true))));
+        assert!(!super::get_bool(&mut cursor, Some(true)).unwrap());
         cursor = make_cursor("n");
-        assert!(!unwrap!(super::get_bool(&mut cursor, None)));
+        assert!(!super::get_bool(&mut cursor, None).unwrap());
         cursor = make_cursor("n");
-        assert!(!unwrap!(super::get_bool(&mut cursor, Some(true))));
+        assert!(!super::get_bool(&mut cursor, Some(true)).unwrap());
 
         // Cases where `get_bool()` returns Err
         cursor = make_cursor("yy");
@@ -83,11 +84,11 @@ mod tests {
     #[test]
     fn get_uint() {
         let mut cursor = make_cursor("0");
-        assert_eq!(unwrap!(super::get_uint(&mut cursor, None)), 0);
+        assert_eq!(super::get_uint(&mut cursor, None).unwrap(), 0);
         cursor = make_cursor("999999");
-        assert_eq!(unwrap!(super::get_uint(&mut cursor, None)), 999_999);
+        assert_eq!(super::get_uint(&mut cursor, None).unwrap(), 999_999);
         cursor = make_cursor("999999");
-        assert_eq!(unwrap!(super::get_uint(&mut cursor, Some(1234))), 999_999);
+        assert_eq!(super::get_uint(&mut cursor, Some(1234)).unwrap(), 999_999);
 
         cursor = make_cursor("-1");
         assert!(super::get_uint(&mut cursor, None).is_err());

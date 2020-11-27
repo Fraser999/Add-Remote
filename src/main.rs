@@ -15,29 +15,18 @@
     clippy::pedantic
 )]
 
-#[macro_use]
-extern crate colour;
-extern crate ctrlc;
-extern crate find_git;
-extern crate reqwest;
-extern crate serde_json;
-#[macro_use]
-extern crate unwrap;
-
 /// Reads and validates input from a stream.
 mod input_getter;
 /// Main struct which holds the details for the current Git repository.
 mod repo;
 
+use colour::{dark_cyan, dark_cyan_ln, dark_green_ln, prnt, prnt_ln, yellow_ln};
 use repo::Repo;
 use std::{env, process};
 
 /// Main function.
 fn main() {
-    unwrap!(
-        ctrlc::set_handler(move || process::exit(0)),
-        "Error setting Ctrl-C handler"
-    );
+    ctrlc::set_handler(move || process::exit(0)).expect("Error setting Ctrl-C handler");
     let args: Vec<_> = env::args().collect();
 
     if args
@@ -97,8 +86,8 @@ be chosen as follows:
 You can set "#
     );
     dark_cyan!("add-remote.preferredFork");
-    prnt_ln!(" (e.g. to 'maidsafe') by running:\n");
-    yellow_ln!("    git config --global --add add-remote.preferredFork maidsafe");
+    prnt_ln!(" (e.g. to 'CasperLabs') by running:\n");
+    yellow_ln!("    git config --global --add add-remote.preferredFork CasperLabs");
     prnt!(
         r#"
 Having chosen the fork to add, you will then be asked to provide an alias for it.  Again, a default
@@ -143,10 +132,10 @@ scope, then add it to your .gitconfig:
     prnt_ln!(
         r#"
 For GitHub, create a token (https://github.com/settings/tokens) ensuring it has full "repo" scope,
-then add it to your .gitconfig:
+then add it **along with your GitHub username** separated with a colon ':' to your .gitconfig:
 "#
     );
-    yellow_ln!("    git config --global --add add-remote.gitHubToken <GitHub Token's Value>");
+    yellow_ln!("    git config --global --add add-remote.gitHubToken <GitHub Username:GitHub Token's Value>");
     prnt_ln!(
         r#"
 Having run these Git config commands, your .gitconfig should contain the following:
@@ -154,10 +143,10 @@ Having run these Git config commands, your .gitconfig should contain the followi
     );
     dark_green_ln!(
         r#"[add-remote]
-    preferredFork = maidsafe
+    preferredFork = CasperLabs
     mainForkOwnerAlias = owner
     gitLabToken = <GitLab Token's Value>
-    gitHubToken = <GitHub Token's Value>
+    gitHubToken = <GitHub Username:GitHub Token's Value>
 [add-remote "forkAlias"]
     anthonywilliams = Anthony
     hsutter = Herb

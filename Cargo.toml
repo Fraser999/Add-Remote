@@ -1,18 +1,19 @@
 [package]
-authors = ["Fraser Hutchison <fraser.hutchison@maidsafe.net>"]
+authors = ["Fraser Hutchison <fraser@casperlabs.io>"]
 categories = ["command-line-utilities", "development-tools"]
 description = "An interactive CLI tool to add a remote fork to a local Git repository."
+edition = "2018"
 keywords = ["git", "github"]
 license = "Apache-2.0 OR MIT"
 name = "add-remote"
 readme = "README.md"
 repository = "https://github.com/Fraser999/Add-Remote.git"
-version = "2.2.2"
+version = "3.0.0"
 
 [dependencies]
-colour = "0.3"
+base64 = "0.13"
+colour = "0.5"
 ctrlc = "3"
 find_git = "1"
-reqwest = "0.9"
+reqwest = { version = "0.10", features = ["blocking"] }
 serde_json = "1"
-unwrap = "1"

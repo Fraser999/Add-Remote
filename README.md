@@ -30,10 +30,10 @@ default will be chosen as follows:
 * the fork indicated by the Git config value of `add-remote.preferredFork` if set, and if that fork
 is not already added locally
 
-You can set `add-remote.preferredFork` (e.g. to `maidsafe`) by running:
+You can set `add-remote.preferredFork` (e.g. to `CasperLabs`) by running:
 
 ```
-git config --global --add add-remote.preferredFork maidsafe
+git config --global --add add-remote.preferredFork CasperLabs
 ```
 
 ### Fork Aliases
@@ -73,20 +73,20 @@ git config --global --add add-remote.gitLabToken <GitLab Token's Value>
 ```
 
 For GitHub, [create a token](https://github.com/settings/tokens) ensuring it has full "repo" scope,
-then add it to your .gitconfig:
+then add it **along with your GitHub username** separated with a colon `:` to your .gitconfig:
 
 ```
-git config --global --add add-remote.gitHubToken <GitHub Token's Value>
+git config --global --add add-remote.gitHubToken <GitHub Username:GitHub Token's Value>
 ```
 
 Having run these Git config commands, your .gitconfig should contain the following:
 
 ```
 [add-remote]
-    preferredFork = maidsafe
+    preferredFork = CasperLabs
     mainForkOwnerAlias = owner
     gitLabToken = <GitLab Token's Value>
-    gitHubToken = <GitHub Token's Value>
+    gitHubToken = <GitHub Username:GitHub Token's Value>
 [add-remote "forkAlias"]
     anthonywilliams = Anthony
     hsutter = Herb

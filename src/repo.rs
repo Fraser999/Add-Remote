@@ -1,13 +1,14 @@
 use super::input_getter::{get_bool, get_string, get_uint};
-use find_git;
+use colour::{cyan_ln, dark_cyan_ln, green_ln, prnt_ln, red_ln, yellow, yellow_ln};
 use reqwest::{
     self,
-    header::{HeaderValue, LINK},
+    blocking::Client,
+    header::{HeaderValue, AUTHORIZATION, LINK, USER_AGENT},
 };
 use serde_json::{self, Value};
 use std::{
     collections::HashMap,
-    io::{self, Read, Stdin},
+    io::{self, Stdin},
     path::PathBuf,
     process::{self, Command},
 };
@@ -71,8 +72,8 @@ impl Url {
     fn split_owner_and_repo(owner_and_repo: &str) -> (Owner, Name) {
         let mut split_itr = owner_and_repo.splitn(2, '/');
         (
-            Owner(unwrap!(split_itr.next()).to_string()),
-            Name(unwrap!(split_itr.next()).to_string()),
+            Owner(split_itr.next().unwrap().to_string()),
+            Name(split_itr.next().unwrap().to_string()),
         )
     }
 
@@ -125,7 +126,7 @@ impl Url {
 pub struct Repo {
     /// The GitLab Personal Access Token taken from git config.
     gitlab_token: Option<String>,
-    /// The GitHub Personal Access Token taken from git config.
+    /// The GitHub Personal Access Token taken from git config, base64-encoded.
     github_token: Option<String>,
     /// The collection of remotes for this repository.
     local_remotes: HashMap<Owner, (Name, RemoteAlias, Url)>,
@@ -152,7 +153,9 @@ impl Default for Repo {
     fn default() -> Self {
         let mut repo = Self::new_uninitialised();
         repo.gitlab_token = repo.get_from_gitconfig("add-remote.gitLabToken");
-        repo.github_token = repo.get_from_gitconfig("add-remote.gitHubToken");
+        repo.github_token = repo
+            .get_from_gitconfig("add-remote.gitHubToken")
+            .map(|token| base64::encode(token));
         repo.populate_local_remotes();
         repo.populate_main_fork_details();
         repo.populate_available_forks();
@@ -177,7 +180,10 @@ impl Repo {
 
     /// Runs `git remote -v` and returns the output.
     pub fn git_remote_verbose_output(&self) -> String {
-        let output = unwrap!(Command::new(&self.git).args(&["remote", "-v"]).output());
+        let output = Command::new(&self.git)
+            .args(&["remote", "-v"])
+            .output()
+            .unwrap();
         assert!(output.status.success(), "Failed to run 'git remote -v'");
         let stdout = String::from_utf8_lossy(&output.stdout);
         stdout.trim().to_string()
@@ -248,15 +254,16 @@ impl Repo {
                 Ok(false) => return,
                 Ok(true) => {
                     let git_config_arg = format!("add-remote.forkAlias.{}", fork_name);
-                    let output = unwrap!(Command::new(&self.git)
+                    let output = Command::new(&self.git)
                         .args(&[
                             "config",
                             "--global",
                             "--replace-all",
                             &git_config_arg,
-                            alias
+                            alias,
                         ])
-                        .output());
+                        .output()
+                        .unwrap();
                     if output.status.success() {
                         green_ln!(
                             "Alias '{}' -> '{}' successfully set in your global git-config",
@@ -287,7 +294,7 @@ impl Repo {
         let chosen_alias = &self.chosen_remote_alias.0;
         let mut command = Command::new(&self.git);
         let _ = command.args(&["remote", "add", chosen_alias, chosen_url.value()]);
-        let output = unwrap!(command.output());
+        let output = command.output().unwrap();
         if !output.status.success() {
             red_ln!("Failed to run {:?}:", command);
             prnt_ln!("{}", String::from_utf8_lossy(&output.stdout));
@@ -298,14 +305,14 @@ impl Repo {
         // Disable pushing for the new remote.
         command = Command::new(&self.git);
         let _ = command.args(&["remote", "set-url", "--push", chosen_alias, "disable_push"]);
-        let output = unwrap!(command.output());
+        let output = command.output().unwrap();
         assert!(output.status.success());
 
         // Fetch from the new remote.
         cyan_ln!("Fetching from {}\n", chosen_url.value());
         command = Command::new(&self.git);
         let _ = command.args(&["fetch", chosen_alias]);
-        let output = unwrap!(command.output());
+        let output = command.output().unwrap();
         assert!(output.status.success());
 
         // Display the remotes, with the new one highlighted in green.
@@ -344,7 +351,7 @@ impl Repo {
     }
 
     fn new_uninitialised() -> Self {
-        let git = unwrap!(find_git::git_path(), "Unable to find Git executable.");
+        let git = find_git::git_path().expect("Unable to find Git executable.");
         Self {
             gitlab_token: None,
             github_token: None,
@@ -362,24 +369,32 @@ impl Repo {
 
     /// Query GitHub's API and return the contents of the response along with an optional link to
     /// the next page if one exists.  Panics on failure.
-    fn send_get(request: &str) -> (String, Option<String>) {
-        let mut response = unwrap!(reqwest::get(request));
+    fn send_get(request: &str, authorisation: Option<&String>) -> (String, Option<String>) {
+        let client = Client::new();
+        let mut request_builder = client.get(request).header(
+            USER_AGENT,
+            format!("Add-Remote/{}", env!("CARGO_PKG_VERSION")),
+        );
+        if let Some(auth) = authorisation {
+            request_builder = request_builder.header(AUTHORIZATION, format!("Basic {}", auth));
+        }
+        let response = request_builder.send().unwrap();
         if !response.status().is_success() {
             panic!(
-                "\nFailed to GET {}\nResponse status: {}\nResponse headers:\n{:?}\n\nNote that \
-                 Personal Access Tokens are required in some cases.\nFor full details, see \
-                 https://github.com/Fraser999/Add-Remote#personal-access-tokens.",
+                "\nFailed to GET {}\nResponse status: {}\nResponse headers:\n{:?}\nResponse \
+                body:\n{:?}\n\nNote that Personal Access Tokens are required in some cases.\nFor \
+                full details, see https://github.com/Fraser999/Add-Remote#personal-access-tokens.",
                 request,
                 response.status(),
-                response.headers()
+                response.headers().clone(),
+                response.text()
             );
         }
         let next_page_link = response
             .headers()
             .get(LINK)
             .and_then(Self::get_link_to_next_from_header);
-        let mut content = String::new();
-        let _ = unwrap!(response.read_to_string(&mut content));
+        let content = response.text().unwrap();
         (content, next_page_link)
     }
 
@@ -387,7 +402,7 @@ impl Repo {
         let search_str = "rel=\"next\"";
         let lhs_trim: &[_] = &[' ', '<'];
         let rhs_trim: &[_] = &[' ', '>', ';'];
-        unwrap!(header_value.to_str()).split(',').find_map(|link| {
+        header_value.to_str().unwrap().split(',').find_map(|link| {
             if link.contains(search_str) {
                 Some(
                     link.trim_start_matches(lhs_trim)
@@ -406,8 +421,10 @@ impl Repo {
     /// not being executed from within a Git repository, so we print an error message to that effect
     /// exit with a non-zero code.
     fn populate_local_remotes(&mut self) {
-        let local_remotes_output =
-            unwrap!(Command::new(&self.git).args(&["remote", "show"]).output());
+        let local_remotes_output = Command::new(&self.git)
+            .args(&["remote", "show"])
+            .output()
+            .unwrap();
         // Get list of local remotes.
         if !local_remotes_output.status.success() {
             red_ln!(
@@ -421,9 +438,10 @@ impl Repo {
 
         // For each, get the URL, and break this down to get the owner too.
         for remote_alias in local_remotes.lines() {
-            let url_output = unwrap!(Command::new(&self.git)
+            let url_output = Command::new(&self.git)
                 .args(&["remote", "get-url", remote_alias])
-                .output());
+                .output()
+                .unwrap();
             assert!(
                 url_output.status.success(),
                 "Failed to run 'git remote get-url {}'",
@@ -434,8 +452,6 @@ impl Repo {
                 let _ = self
                     .local_remotes
                     .insert(owner, (name, RemoteAlias(remote_alias.to_string()), url));
-            } else {
-                continue;
             }
         }
         if self.local_remotes.is_empty() {
@@ -449,11 +465,12 @@ impl Repo {
 
     /// Send GET to Gitlab/GitHub to allow retrieval of the main fork/source's details.
     fn populate_main_fork_details(&mut self) {
-        let (owner, name, url) = unwrap!(self
+        let (owner, name, url) = self
             .local_remotes
             .iter()
             .map(|(owner, (name, _, url))| (owner.clone(), name.clone(), url.clone()))
-            .next());
+            .next()
+            .unwrap();
         if url.is_git_lab() {
             if self.gitlab_token.is_none() {
                 red_ln!(
@@ -469,27 +486,27 @@ impl Repo {
             self.main_fork_name = name;
             while self.get_gitlab_parent() {}
         } else {
-            let mut request = format!("{}{}/{}", GITHUB_API, owner.0, name.0);
-            if let Some(ref token) = self.github_token {
-                request = format!("{}?access_token={}", request, token);
-            }
-            let response = Self::send_get(&request).0;
-            let response_as_json: Value = unwrap!(serde_json::from_str(&response));
+            let request = format!("{}{}/{}", GITHUB_API, owner.0, name.0);
+            let response = Self::send_get(&request, self.github_token.as_ref()).0;
+            let response_as_json: Value = serde_json::from_str(&response).unwrap();
             self.main_fork_owner = match response_as_json["source"]["owner"]["login"] {
-                Value::Null => {
-                    Owner(unwrap!(response_as_json["owner"]["login"].as_str()).to_string())
-                }
+                Value::Null => Owner(
+                    response_as_json["owner"]["login"]
+                        .as_str()
+                        .unwrap()
+                        .to_string(),
+                ),
                 Value::String(ref owner) => Owner(owner.trim_matches('"').to_string()),
                 _ => unreachable!(),
             };
             self.main_fork_name = match response_as_json["source"]["name"] {
-                Value::Null => Name(unwrap!(response_as_json["name"].as_str()).to_string()),
+                Value::Null => Name(response_as_json["name"].as_str().unwrap().to_string()),
                 Value::String(ref name) => Name(name.trim_matches('"').to_string()),
                 _ => unreachable!(),
             };
             self.main_fork_url = match response_as_json["source"]["ssh_url"] {
                 Value::Null => {
-                    Url::GitHubSsh(unwrap!(response_as_json["ssh_url"].as_str()).to_string())
+                    Url::GitHubSsh(response_as_json["ssh_url"].as_str().unwrap().to_string())
                 }
                 Value::String(ref url) => Url::GitHubHttps(url.trim_matches('"').to_string()),
                 _ => unreachable!(),
@@ -507,18 +524,24 @@ impl Repo {
             GITLAB_API,
             self.main_fork_owner.0,
             self.main_fork_name.0.replace("/", "%2F"),
-            unwrap!(self.gitlab_token.as_ref())
+            self.gitlab_token.as_ref().unwrap()
         );
-        let response = Self::send_get(&request).0;
-        let response_as_json: Value = unwrap!(serde_json::from_str(&response));
+        let response = Self::send_get(&request, None).0;
+        let response_as_json: Value = serde_json::from_str(&response).unwrap();
         if let Value::Null = response_as_json["forked_from_project"] {
-            self.main_fork_url =
-                Url::GitLabSsh(unwrap!(response_as_json["ssh_url_to_repo"].as_str()).to_string());
+            self.main_fork_url = Url::GitLabSsh(
+                response_as_json["ssh_url_to_repo"]
+                    .as_str()
+                    .unwrap()
+                    .to_string(),
+            );
             return false;
         }
-        let (owner, name) = Url::split_owner_and_repo(unwrap!(response_as_json
-            ["forked_from_project"]["path_with_namespace"]
-            .as_str()));
+        let (owner, name) = Url::split_owner_and_repo(
+            response_as_json["forked_from_project"]["path_with_namespace"]
+                .as_str()
+                .unwrap(),
+        );
         self.main_fork_owner = owner;
         self.main_fork_name = name;
         true
@@ -526,41 +549,41 @@ impl Repo {
 
     /// Send GET to Gitlab/GitHub to retrieve the list of forks and their details.
     fn populate_available_forks(&mut self) {
-        let first_url = unwrap!(self
+        let first_url = self
             .local_remotes
             .values()
             .map(|(_, _, url)| url.clone())
-            .next());
-        let mut optional_request = if first_url.is_git_lab() {
-            Some(format!(
+            .next()
+            .unwrap();
+        let (mut optional_request, authorisation) = if first_url.is_git_lab() {
+            let request = Some(format!(
                 "{}{}%2F{}/forks?per_page=200;private_token={}",
                 GITLAB_API,
                 self.main_fork_owner.0,
                 self.main_fork_name.0.replace("/", "%2F"),
-                unwrap!(self.gitlab_token.as_ref())
-            ))
+                self.gitlab_token.as_ref().unwrap()
+            ));
+            (request, None)
         } else {
-            let mut request = format!(
+            let request = Some(format!(
                 "{}{}/{}/forks?per_page=100",
                 GITHUB_API, self.main_fork_owner.0, self.main_fork_name.0
-            );
-            if let Some(ref token) = self.github_token {
-                request = format!("{};access_token={}", request, token);
-            }
-            Some(request)
+            ));
+            let authorisation = self.github_token.as_ref();
+            (request, authorisation)
         };
 
         while let Some(request) = optional_request {
-            let (response, next_page_link) = Self::send_get(&request);
-            let response_as_json: Value = unwrap!(serde_json::from_str(&response));
+            let (response, next_page_link) = Self::send_get(&request, authorisation);
+            let response_as_json: Value = serde_json::from_str(&response).unwrap();
             if let Value::Array(values) = response_as_json {
                 for value in &values {
                     let (owner, url) = if first_url.is_git_lab() {
-                        let (owner, _) = Url::split_owner_and_repo(unwrap!(value
-                            ["path_with_namespace"]
-                            .as_str()));
-                        let url = unwrap!(value["ssh_url_to_repo"].as_str()).to_string();
-                        let subfork_count = unwrap!(value["forks_count"].as_u64());
+                        let (owner, _) = Url::split_owner_and_repo(
+                            value["path_with_namespace"].as_str().unwrap(),
+                        );
+                        let url = value["ssh_url_to_repo"].as_str().unwrap().to_string();
+                        let subfork_count = value["forks_count"].as_u64().unwrap();
                         if owner != self.main_fork_owner && subfork_count > 0 {
                             yellow_ln!(
                                 "{} which is a fork of {} has {} fork{} being ignored.",
@@ -572,8 +595,8 @@ impl Repo {
                         }
                         (owner, Url::GitLabSsh(url))
                     } else {
-                        let owner = unwrap!(value["owner"]["login"].as_str()).to_string();
-                        let url = unwrap!(value["ssh_url"].as_str()).to_string();
+                        let owner = value["owner"]["login"].as_str().unwrap().to_string();
+                        let url = value["ssh_url"].as_str().unwrap().to_string();
                         (Owner(owner), Url::GitHubSsh(url))
                     };
                     if !self.local_remotes.contains_key(&owner) {
@@ -640,7 +663,10 @@ impl Repo {
     }
 
     fn get_from_gitconfig(&self, key: &str) -> Option<String> {
-        let output = unwrap!(Command::new(&self.git).args(&["config", key]).output());
+        let output = Command::new(&self.git)
+            .args(&["config", key])
+            .output()
+            .unwrap();
         if output.status.success() {
             Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
         } else {
@@ -651,15 +677,16 @@ impl Repo {
     /// Runs `git branch --list <Alias>/* -vr --sort=-committerdate` and returns the output.
     fn git_branch_verbose_output(&self, alias: &str) -> String {
         let alias_arg = format!("{}/*", alias);
-        let output = unwrap!(Command::new(&self.git)
+        let output = Command::new(&self.git)
             .args(&[
                 "branch",
                 "--list",
                 &alias_arg,
                 "-vr",
-                "--sort=-committerdate"
+                "--sort=-committerdate",
             ])
-            .output());
+            .output()
+            .unwrap();
         assert!(
             output.status.success(),
             "Failed to run 'git branch --list {} -vr --sort=-committerdate'",
