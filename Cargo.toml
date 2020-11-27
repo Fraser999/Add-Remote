@@ -8,7 +8,7 @@ license = "Apache-2.0 OR MIT"
 name = "add-remote"
 readme = "README.md"
 repository = "https://github.com/Fraser999/Add-Remote.git"
-version = "3.0.0"
+version = "3.0.1"
 
 [dependencies]
 base64 = "0.13"

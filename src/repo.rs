@@ -155,7 +155,7 @@ impl Default for Repo {
         repo.gitlab_token = repo.get_from_gitconfig("add-remote.gitLabToken");
         repo.github_token = repo
             .get_from_gitconfig("add-remote.gitHubToken")
-            .map(|token| base64::encode(token));
+            .map(base64::encode);
         repo.populate_local_remotes();
         repo.populate_main_fork_details();
         repo.populate_available_forks();
