@@ -5,6 +5,8 @@ it queries GitLab or GitHub as appropriate for the full list of forks and offers
 adding one under a local alias.  The added fork will be configured with a pull-url only; the
 push-url will be disabled.
 
+![Demonstration of add-remote](demo.svg "Demonstration of add-remote")
+
 ## Install
 
 ```
