@@ -1,7 +1,11 @@
-use std::{io::BufRead, process};
+use std::{
+    io::{self, BufRead, Write},
+    process,
+};
 
 /// Reads a line from `reader` and strips trailing whitespace.
 pub fn get_string<T: BufRead>(reader: &mut T) -> Result<String, String> {
+    io::stdout().flush().unwrap();
     let mut input = String::new();
     match reader.read_line(&mut input) {
         Ok(0) => {
@@ -17,6 +21,7 @@ pub fn get_string<T: BufRead>(reader: &mut T) -> Result<String, String> {
 /// `Y` or `y`; false if the line is `N` or `n`; the unwrapped `default` value if the line is empty,
 /// or else an error.
 pub fn get_bool<T: BufRead>(reader: &mut T, default: Option<bool>) -> Result<bool, String> {
+    io::stdout().flush().unwrap();
     let input = get_string(reader)?;
     let error = "Enter 'y' or 'n' only.".to_string();
     match &*input {
@@ -30,6 +35,7 @@ pub fn get_bool<T: BufRead>(reader: &mut T, default: Option<bool>) -> Result<boo
 /// Reads a line from `reader` and strips trailing whitespace.  It returns the value entered if it
 /// can be parsed as a `u64`.
 pub fn get_uint<T: BufRead>(reader: &mut T, default: Option<u64>) -> Result<u64, String> {
+    io::stdout().flush().unwrap();
     let input = get_string(reader)?;
     let error = "Enter positive integer or zero.".to_string();
     if input.is_empty() {
