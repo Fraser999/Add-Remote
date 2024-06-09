@@ -1,4 +1,5 @@
 use super::input_getter::{get_bool, get_string, get_uint};
+use base64::Engine as _;
 use colour::{cyan_ln, dark_cyan_ln, green_ln, red_ln, yellow, yellow_ln};
 use reqwest::{
     self,
@@ -102,7 +103,7 @@ impl Url {
             Url::GitLabHttps(url)
             | Url::GitLabSsh(url)
             | Url::GitHubHttps(url)
-            | Url::GitHubSsh(url) => &url,
+            | Url::GitHubSsh(url) => url,
         }
     }
 
@@ -155,7 +156,7 @@ impl Default for Repo {
         repo.gitlab_token = repo.get_from_gitconfig("add-remote.gitLabToken");
         repo.github_token = repo
             .get_from_gitconfig("add-remote.gitHubToken")
-            .map(base64::encode);
+            .map(|token| base64::prelude::BASE64_STANDARD.encode(token));
         repo.populate_local_remotes();
         repo.populate_main_fork_details();
         repo.populate_available_forks();
@@ -173,7 +174,7 @@ impl Repo {
     pub fn show_available_forks(&self) {
         println!("Available forks:");
         let first_column_width = self.available_forks.len().to_string().len() + 2;
-        for (index, &(ref owner, _)) in self.available_forks.iter().enumerate() {
+        for (index, (owner, _)) in self.available_forks.iter().enumerate() {
             println!("{:<width$}{}", index, owner.0, width = first_column_width);
         }
     }
@@ -181,7 +182,7 @@ impl Repo {
     /// Runs `git remote -v` and returns the output.
     pub fn git_remote_verbose_output(&self) -> String {
         let output = Command::new(&self.git)
-            .args(&["remote", "-v"])
+            .args(["remote", "-v"])
             .output()
             .unwrap();
         assert!(output.status.success(), "Failed to run 'git remote -v'");
@@ -227,10 +228,9 @@ impl Repo {
                     if value.is_empty() {
                         self.chosen_remote_alias = RemoteAlias(default);
                         return false;
-                    } else {
-                        self.chosen_remote_alias = RemoteAlias(value);
-                        return true;
                     }
+                    self.chosen_remote_alias = RemoteAlias(value);
+                    return true;
                 }
             }
         }
@@ -253,9 +253,9 @@ impl Repo {
                 }
                 Ok(false) => return,
                 Ok(true) => {
-                    let git_config_arg = format!("add-remote.forkAlias.{}", fork_name);
+                    let git_config_arg = format!("add-remote.forkAlias.{fork_name}");
                     let output = Command::new(&self.git)
-                        .args(&[
+                        .args([
                             "config",
                             "--global",
                             "--replace-all",
@@ -286,14 +286,14 @@ impl Repo {
     /// Process the user's choices, i.e. add the new remote.  Also calls `git fetch` for the new
     /// remote and displays the remotes when complete.
     pub fn set_remote(&self) {
-        println!("");
+        println!();
         let remotes_before = self.git_remote_verbose_output();
 
         // Add the remote.
         let chosen_url = self.get_chosen_url();
         let chosen_alias = &self.chosen_remote_alias.0;
         let mut command = Command::new(&self.git);
-        let _ = command.args(&["remote", "add", chosen_alias, chosen_url.value()]);
+        let _ = command.args(["remote", "add", chosen_alias, chosen_url.value()]);
         let output = command.output().unwrap();
         if !output.status.success() {
             red_ln!("Failed to run {:?}:", command);
@@ -304,14 +304,14 @@ impl Repo {
 
         // Disable pushing for the new remote.
         command = Command::new(&self.git);
-        let _ = command.args(&["remote", "set-url", "--push", chosen_alias, "disable_push"]);
+        let _ = command.args(["remote", "set-url", "--push", chosen_alias, "disable_push"]);
         let output = command.output().unwrap();
         assert!(output.status.success());
 
         // Fetch from the new remote.
         cyan_ln!("Fetching from {}\n", chosen_url.value());
         command = Command::new(&self.git);
-        let _ = command.args(&["fetch", chosen_alias]);
+        let _ = command.args(["fetch", chosen_alias]);
         let output = command.output().unwrap();
         assert!(output.status.success());
 
@@ -321,7 +321,7 @@ impl Repo {
         let mut line_before = before_itr.next();
         for line in remotes_after.lines() {
             if line_before.unwrap_or_default() == line {
-                println!("{}", line);
+                println!("{line}");
                 line_before = before_itr.next();
             } else {
                 dark_cyan_ln!("{}", line);
@@ -332,7 +332,7 @@ impl Repo {
         if branches.is_empty() {
             branches = self.git_branch_verbose_output(&chosen_alias.to_lowercase());
         }
-        println!("\n{}", branches);
+        println!("\n{branches}");
     }
 
     fn get_chosen_url(&self) -> Url {
@@ -376,20 +376,19 @@ impl Repo {
             format!("Add-Remote/{}", env!("CARGO_PKG_VERSION")),
         );
         if let Some(auth) = authorisation {
-            request_builder = request_builder.header(AUTHORIZATION, format!("Basic {}", auth));
+            request_builder = request_builder.header(AUTHORIZATION, format!("Basic {auth}"));
         }
         let response = request_builder.send().unwrap();
-        if !response.status().is_success() {
-            panic!(
-                "\nFailed to GET {}\nResponse status: {}\nResponse headers:\n{:?}\nResponse \
-                body:\n{:?}\n\nNote that Personal Access Tokens are required in some cases.\nFor \
-                full details, see https://github.com/Fraser999/Add-Remote#personal-access-tokens.",
-                request,
-                response.status(),
-                response.headers().clone(),
-                response.text()
-            );
-        }
+        assert!(
+            response.status().is_success(),
+            "\nFailed to GET {}\nResponse status: {}\nResponse headers:\n{:?}\nResponse body:\n\
+            {:?}\n\nNote that Personal Access Tokens are required in some cases.\nFor full \
+            details, see https://github.com/Fraser999/Add-Remote#personal-access-tokens.",
+            request,
+            response.status(),
+            response.headers().clone(),
+            response.text()
+        );
         let next_page_link = response
             .headers()
             .get(LINK)
@@ -422,7 +421,7 @@ impl Repo {
     /// exit with a non-zero code.
     fn populate_local_remotes(&mut self) {
         let local_remotes_output = Command::new(&self.git)
-            .args(&["remote", "show"])
+            .args(["remote", "show"])
             .output()
             .unwrap();
         // Get list of local remotes.
@@ -439,7 +438,7 @@ impl Repo {
         // For each, get the URL, and break this down to get the owner too.
         for remote_alias in local_remotes.lines() {
             let url_output = Command::new(&self.git)
-                .args(&["remote", "get-url", remote_alias])
+                .args(["remote", "get-url", remote_alias])
                 .output()
                 .unwrap();
             assert!(
@@ -523,7 +522,7 @@ impl Repo {
             "{}{}%2F{}?private_token={}",
             GITLAB_API,
             self.main_fork_owner.0,
-            self.main_fork_name.0.replace("/", "%2F"),
+            self.main_fork_name.0.replace('/', "%2F"),
             self.gitlab_token.as_ref().unwrap()
         );
         let response = Self::send_get(&request, None).0;
@@ -560,7 +559,7 @@ impl Repo {
                 "{}{}%2F{}/forks?per_page=200;private_token={}",
                 GITLAB_API,
                 self.main_fork_owner.0,
-                self.main_fork_name.0.replace("/", "%2F"),
+                self.main_fork_name.0.replace('/', "%2F"),
                 self.gitlab_token.as_ref().unwrap()
             ));
             (request, None)
@@ -612,7 +611,7 @@ impl Repo {
                 .push((self.main_fork_owner.clone(), self.main_fork_url.clone()));
         }
         self.available_forks
-            .sort_by_key(|&(ref owner, _)| owner.0.to_lowercase());
+            .sort_by_key(|(owner, _)| owner.0.to_lowercase());
     }
 
     /// Suggests an index of `available_forks` to use as a default for the user's choice.  Favours
@@ -626,7 +625,7 @@ impl Repo {
         // Choose the main fork/source owner if available.
         if let Ok(index) = self
             .available_forks
-            .binary_search_by_key(&self.main_fork_owner.0.to_lowercase(), |&(ref owner, _)| {
+            .binary_search_by_key(&self.main_fork_owner.0.to_lowercase(), |(owner, _)| {
                 owner.0.to_lowercase()
             })
         {
@@ -636,7 +635,7 @@ impl Repo {
         self.get_from_gitconfig("add-remote.preferredFork")
             .and_then(|preferred| {
                 self.available_forks
-                    .binary_search_by_key(&preferred, |&(ref owner, _)| owner.0.to_lowercase())
+                    .binary_search_by_key(&preferred, |(owner, _)| owner.0.to_lowercase())
                     .ok()
             })
             .map(|index| index as u64)
@@ -664,7 +663,7 @@ impl Repo {
 
     fn get_from_gitconfig(&self, key: &str) -> Option<String> {
         let output = Command::new(&self.git)
-            .args(&["config", key])
+            .args(["config", key])
             .output()
             .unwrap();
         if output.status.success() {
@@ -676,9 +675,9 @@ impl Repo {
 
     /// Runs `git branch --list <Alias>/* -vr --sort=-committerdate` and returns the output.
     fn git_branch_verbose_output(&self, alias: &str) -> String {
-        let alias_arg = format!("{}/*", alias);
+        let alias_arg = format!("{alias}/*");
         let output = Command::new(&self.git)
-            .args(&[
+            .args([
                 "branch",
                 "--list",
                 &alias_arg,

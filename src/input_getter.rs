@@ -1,15 +1,15 @@
 use std::{io::BufRead, process};
 
-/// Reads a line from from `reader` and strips trailing whitespace.
+/// Reads a line from `reader` and strips trailing whitespace.
 pub fn get_string<T: BufRead>(reader: &mut T) -> Result<String, String> {
     let mut input = String::new();
     match reader.read_line(&mut input) {
-        Ok(character_count) if character_count == 0 => {
+        Ok(0) => {
             // A signal was sent - just exit the process as it was likely Ctrl-C.
             process::exit(0);
         }
         Ok(_) => Ok(input.trim_end().to_string()),
-        Err(error) => Err(format!("Failed to read from std::cin: {}.", error)),
+        Err(error) => Err(format!("Failed to read from std::cin: {error}.")),
     }
 }
 
@@ -27,7 +27,8 @@ pub fn get_bool<T: BufRead>(reader: &mut T, default: Option<bool>) -> Result<boo
     }
 }
 
-/// Reads a line from from `reader` and strips trailing whitespace.  It returns the value entered if
+/// Reads a line from `reader` and strips trailing whitespace.  It returns the value entered if it
+/// can be parsed as a `u64`.
 pub fn get_uint<T: BufRead>(reader: &mut T, default: Option<u64>) -> Result<u64, String> {
     let input = get_string(reader)?;
     let error = "Enter positive integer or zero.".to_string();
