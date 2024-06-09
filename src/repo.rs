@@ -474,7 +474,7 @@ impl Repo {
             if self.gitlab_token.is_none() {
                 red_ln!(
                     "This repository is hosted on GitLab.  To use 'add-remote' with a GitLab \
-                     project, you must add a GitLab Personal Access Token with \"api\" scope \
+                     project, you must add a GitLab Personal Access Token with \"read_api\" scope \
                      to your git config under the key 'add-remote.gitLabToken'.  For full \
                      details, see \
                      https://github.com/Fraser999/Add-Remote#personal-access-tokens."
@@ -556,7 +556,7 @@ impl Repo {
             .unwrap();
         let (mut optional_request, authorisation) = if first_url.is_git_lab() {
             let request = Some(format!(
-                "{}{}%2F{}/forks?per_page=200;private_token={}",
+                "{}{}%2F{}/forks?private_token={}",
                 GITLAB_API,
                 self.main_fork_owner.0,
                 self.main_fork_name.0.replace('/', "%2F"),

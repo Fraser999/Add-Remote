@@ -124,8 +124,8 @@ Default aliases can be added to your .gitconfig file under the subkey
 To use `add-remote` with any GitLab repository or with a private GitHub one, you need to provide a
 Personal Access Token via git config.
 
-For GitLab, create a token (https://gitlab.com/profile/personal_access_tokens) ensuring it has "api"
-scope, then add it to your .gitconfig:
+For GitLab, create a token (https://gitlab.com/profile/personal_access_tokens) ensuring it has
+"read_api" scope, then add it to your .gitconfig:
 "#
     );
     yellow_ln!("    git config --global --add add-remote.gitLabToken <GitLab Token's Value>");
