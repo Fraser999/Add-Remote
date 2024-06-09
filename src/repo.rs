@@ -1,5 +1,5 @@
 use super::input_getter::{get_bool, get_string, get_uint};
-use colour::{cyan_ln, dark_cyan_ln, green_ln, prnt_ln, red_ln, yellow, yellow_ln};
+use colour::{cyan_ln, dark_cyan_ln, green_ln, red_ln, yellow, yellow_ln};
 use reqwest::{
     self,
     blocking::Client,
@@ -18,11 +18,11 @@ const GITLAB_API: &str = "https://gitlab.com/api/v4/projects/";
 /// Base URL for sending GET requests to GitHub for retrieving info about repositories.
 const GITHUB_API: &str = "https://api.github.com/repos/";
 
-/// The Gitlab/GitHub username of the owner of a repository or fork.
+/// The GitLab/GitHub username of the owner of a repository or fork.
 #[derive(Clone, Default, PartialEq, Eq, Hash, Debug)]
 struct Owner(pub String);
 
-/// The Gitlab/GitHub name of a repository or fork.
+/// The GitLab/GitHub name of a repository or fork.
 #[derive(Clone, Default, Debug)]
 struct Name(pub String);
 
@@ -130,7 +130,7 @@ pub struct Repo {
     github_token: Option<String>,
     /// The collection of remotes for this repository.
     local_remotes: HashMap<Owner, (Name, RemoteAlias, Url)>,
-    /// The collection of known forks (and the actual main "fork" a.k.a the source) which aren't
+    /// The collection of known forks (and the actual main "fork" a.k.a. the source) which aren't
     /// already included in `local_remotes`.
     available_forks: Vec<(Owner, Url)>,
     /// The owner of the main fork/source.
@@ -164,17 +164,17 @@ impl Default for Repo {
 }
 
 impl Repo {
-    /// Whether there any further remotes which _can_ be added.
+    /// Whether there are any further remotes which _can_ be added.
     pub fn has_no_available_forks(&self) -> bool {
         self.available_forks.is_empty()
     }
 
     /// Displays the collection of available forks.
     pub fn show_available_forks(&self) {
-        prnt_ln!("Available forks:");
+        println!("Available forks:");
         let first_column_width = self.available_forks.len().to_string().len() + 2;
         for (index, &(ref owner, _)) in self.available_forks.iter().enumerate() {
-            prnt_ln!("{:<width$}{}", index, owner.0, width = first_column_width);
+            println!("{:<width$}{}", index, owner.0, width = first_column_width);
         }
     }
 
@@ -189,7 +189,7 @@ impl Repo {
         stdout.trim().to_string()
     }
 
-    /// Ask the user to chooses which available fork to add as a new remote.
+    /// Ask the user to choose an available fork to add as a new remote.
     pub fn choose_fork(&mut self) {
         let default = self.suggest_fork();
         loop {
@@ -286,7 +286,7 @@ impl Repo {
     /// Process the user's choices, i.e. add the new remote.  Also calls `git fetch` for the new
     /// remote and displays the remotes when complete.
     pub fn set_remote(&self) {
-        prnt_ln!("");
+        println!("");
         let remotes_before = self.git_remote_verbose_output();
 
         // Add the remote.
@@ -297,8 +297,8 @@ impl Repo {
         let output = command.output().unwrap();
         if !output.status.success() {
             red_ln!("Failed to run {:?}:", command);
-            prnt_ln!("{}", String::from_utf8_lossy(&output.stdout));
-            prnt_ln!("{}", String::from_utf8_lossy(&output.stderr));
+            println!("{}", String::from_utf8_lossy(&output.stdout));
+            println!("{}", String::from_utf8_lossy(&output.stderr));
             process::exit(-4);
         }
 
@@ -321,7 +321,7 @@ impl Repo {
         let mut line_before = before_itr.next();
         for line in remotes_after.lines() {
             if line_before.unwrap_or_default() == line {
-                prnt_ln!("{}", line);
+                println!("{}", line);
                 line_before = before_itr.next();
             } else {
                 dark_cyan_ln!("{}", line);
@@ -332,7 +332,7 @@ impl Repo {
         if branches.is_empty() {
             branches = self.git_branch_verbose_output(&chosen_alias.to_lowercase());
         }
-        prnt_ln!("\n{}", branches);
+        println!("\n{}", branches);
     }
 
     fn get_chosen_url(&self) -> Url {
@@ -463,7 +463,7 @@ impl Repo {
         }
     }
 
-    /// Send GET to Gitlab/GitHub to allow retrieval of the main fork/source's details.
+    /// Send `GET` to GitLab/GitHub to allow retrieval of the main fork/source's details.
     fn populate_main_fork_details(&mut self) {
         let (owner, name, url) = self
             .local_remotes
@@ -547,7 +547,7 @@ impl Repo {
         true
     }
 
-    /// Send GET to Gitlab/GitHub to retrieve the list of forks and their details.
+    /// Send `GET` to GitLab/GitHub to retrieve the list of forks and their details.
     fn populate_available_forks(&mut self) {
         let first_url = self
             .local_remotes

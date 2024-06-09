@@ -11,9 +11,9 @@ repository = "https://github.com/Fraser999/Add-Remote.git"
 version = "3.0.1"
 
 [dependencies]
-base64 = "0.13"
-colour = "0.5"
-ctrlc = "3"
-find_git = "1"
-reqwest = { version = "0.10", features = ["blocking"] }
-serde_json = "1"
+base64 = "0.22.1"
+colour = "2.0.0"
+ctrlc = "3.4.4"
+find_git = "1.2.0"
+reqwest = { version = "0.12.4", features = ["blocking"] }
+serde_json = "1.0.117"

@@ -1,6 +1,6 @@
 //! An interactive CLI tool to add a remote fork to a local Git repository.
 
-#![forbid(warnings)]
+#![deny(warnings)]
 #![warn(
     missing_copy_implementations,
     trivial_casts,
@@ -17,10 +17,10 @@
 
 /// Reads and validates input from a stream.
 mod input_getter;
-/// Main struct which holds the details for the current Git repository.
+/// Main struct that holds the details for the current Git repository.
 mod repo;
 
-use colour::{dark_cyan, dark_cyan_ln, dark_green_ln, prnt, prnt_ln, yellow_ln};
+use colour::{dark_cyan, dark_cyan_ln, dark_green_ln, yellow_ln};
 use repo::Repo;
 use std::{env, process};
 
@@ -40,14 +40,14 @@ fn main() {
         .iter()
         .any(|arg| arg == "-v" || arg == "-V" || arg == "--version")
     {
-        prnt_ln!("{}", env!("CARGO_PKG_VERSION"));
+        println!("{}", env!("CARGO_PKG_VERSION"));
         return;
     }
 
     let mut repo = Repo::default();
     if repo.has_no_available_forks() {
         yellow_ln!("There are no forks available which aren't already a remote:");
-        prnt_ln!("{}", repo.git_remote_verbose_output());
+        println!("{}", repo.git_remote_verbose_output());
         return;
     }
     repo.show_available_forks();
@@ -60,7 +60,7 @@ fn main() {
 
 /// Prints the help message.
 fn print_help() {
-    prnt!(
+    print!(
         r#"
 Add a remote fork to a local Git repository.  When run from a Git repo, it queries GitLab or GitHub
 for the full list of forks and offers simple choices for adding one under a local alias.  The added
@@ -79,16 +79,16 @@ be chosen as follows:
 * the fork indicated by the Git config value of "#
     );
     dark_cyan!("add-remote.preferredFork");
-    prnt!(
+    print!(
         r#" if set, and if that fork
   is not already added locally
 
 You can set "#
     );
     dark_cyan!("add-remote.preferredFork");
-    prnt_ln!(" (e.g. to 'CasperLabs') by running:\n");
+    println!(" (e.g. to 'CasperLabs') by running:\n");
     yellow_ln!("    git config --global --add add-remote.preferredFork CasperLabs");
-    prnt!(
+    print!(
         r#"
 Having chosen the fork to add, you will then be asked to provide an alias for it.  Again, a default
 value will be presented, chosen as follows:
@@ -96,30 +96,30 @@ value will be presented, chosen as follows:
 * if this is the main fork/source owner, uses the Git config value of "#
     );
     dark_cyan_ln!("add-remote.mainForkOwnerAlias");
-    prnt!(
+    print!(
         r#"  if set, or else uses "upstream"
 * uses the Git config value from the map of aliases under the subkey "#
     );
     dark_cyan!("add-remote.forkAlias");
-    prnt!(
+    print!(
         r#" if set
 * uses the fork-owner's name
 
 You can set "#
     );
     dark_cyan!("add-remote.mainForkOwnerAlias");
-    prnt_ln!(" (e.g. to 'owner') by running:\n");
+    println!(" (e.g. to 'owner') by running:\n");
     yellow_ln!("    git config --global --add add-remote.mainForkOwnerAlias owner");
-    prnt!(
+    print!(
         r#"
 Default aliases can be added to your .gitconfig file under the subkey
 "#
     );
     dark_cyan!("add-remote.forkAlias.<owner's name>");
-    prnt_ln!(" by running e.g:\n");
+    println!(" by running e.g:\n");
     yellow_ln!("    git config --global --add add-remote.forkAlias.anthonywilliams Anthony");
     yellow_ln!("    git config --global --add add-remote.forkAlias.hsutter Herb");
-    prnt_ln!(
+    println!(
         r#"
 To use `add-remote` with any GitLab repository or with a private GitHub one, you need to provide a
 Personal Access Token via git config.
@@ -129,14 +129,14 @@ scope, then add it to your .gitconfig:
 "#
     );
     yellow_ln!("    git config --global --add add-remote.gitLabToken <GitLab Token's Value>");
-    prnt_ln!(
+    println!(
         r#"
 For GitHub, create a token (https://github.com/settings/tokens) ensuring it has full "repo" scope,
 then add it **along with your GitHub username** separated with a colon ':' to your .gitconfig:
 "#
     );
     yellow_ln!("    git config --global --add add-remote.gitHubToken <GitHub Username:GitHub Token's Value>");
-    prnt_ln!(
+    println!(
         r#"
 Having run these Git config commands, your .gitconfig should contain the following:
 "#

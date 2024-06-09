@@ -68,7 +68,7 @@ To use `add-remote` with any GitLab repository or with a private GitHub one, you
 Personal Access Token via git config.
 
 For GitLab, [create a token](https://gitlab.com/profile/personal_access_tokens) ensuring it has
-"api" scope, then add it to your .gitconfig:
+"read_api" scope, then add it to your .gitconfig:
 
 ```
 git config --global --add add-remote.gitLabToken <GitLab Token's Value>
