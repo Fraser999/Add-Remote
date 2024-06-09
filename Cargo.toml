@@ -8,11 +8,11 @@ license = "Apache-2.0 OR MIT"
 name = "add-remote"
 readme = "README.md"
 repository = "https://github.com/Fraser999/Add-Remote.git"
-version = "3.0.2"
+version = "3.0.3"
 
 [dependencies]
 base64 = "0.22.1"
-colour = "2.0.0"
+colour = "2.1.0"
 ctrlc = "3.4.4"
 find_git = "1.2.0"
 reqwest = { version = "0.12.4", features = ["blocking"] }
